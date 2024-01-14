@@ -1,0 +1,80 @@
+@echo off
+rem dummy1
+rem dummy2
+rem dummy3
+rem dummy4
+rem dummy5
+
+call :sleeper 2
+
+if "%cleantype%" EQU "setupfiles" call :cleansetupfiles
+if "%cleantype%" EQU "directory"  call :cleandirectory
+call :closeout
+
+:cleansetupfiles
+	if exist %cleandir%\grub2win.zip              erase    %cleandir%\grub2win.zip
+        if exist %cleandir%\G2WInstall.exe            erase    %cleandir%\G2WInstall.exe
+	if exist %cleandir%\grub2win.setup.log.txt    erase    %cleandir%\grub2win.setup.log.txt
+	goto :eof
+
+:cleandirectory
+	FOR /f "tokens=*" %%G IN ('dir /b /a:d %WorkDir%\*.*') DO (call :parseit "%%G")
+	goto :eof
+
+:parseit
+	set dirname=%1
+	for /f "tokens=1,2,3,4,5,6 delims=." %%a in (%dirname%) do (
+		if "%%a" neq "" set final=%%a
+		if "%%b" neq "" set final=%%b
+		if "%%c" neq "" set final=%%c
+		if "%%d" neq "" set final=%%d
+		if "%%e" neq "" set final=%%e
+		if "%%f" neq "" set final=%%f
+	)
+	echo.
+	if "%final:~10,1%" == "" set final=0000
+	echo Found    %WorkDir%\%dirname%
+	echo Final    %final%
+	echo Latest   %lateststamp%
+	echo CleanDir %cleandir%
+	rem pause
+	if "%cleandir%" neq "" (
+		if "%cleandir%" equ "%final%" (
+		echo Purged %WorkDir%\%cleandir%
+		rd /s /q %WorkDir%\%dirname%
+		goto :eof
+	) else (
+		echo Purge skipped %WorkDir%\%dirname%
+		goto :eof
+	)
+	) else (
+	if "%final%" leq "%lateststamp%" (
+		echo Delete %WorkDir%\%dirname%
+		rd /s /q %WorkDir%\%dirname%
+	) else (
+		echo Skipped %WorkDir%\%dirname%
+	)
+	)
+	goto :eof
+
+:closeout
+	%systemdrive%
+	cd \
+	echo.
+	echo The cleanup utility is complete 
+	echo Type is %cleantype% 
+	if "%cleantype%" EQU "setupfiles" echo Directory is %cleandir%
+	echo Closing out
+	rem pause
+        call :sleeper 1 
+        if not exist %masterpath% (
+              rd /s /q %ProgramData%\Grub2Win 2>nul
+              rd /s /q "C:\Documents and Settings\All Users\Application Data\Grub2Win" 2>nul
+        )
+	goto 2>nul & del "%~f0"
+	goto :eof
+
+:sleeper
+	set /a seconds = %1 + 1
+	ping -n %seconds% 127.0.0.1 >nul 2>&1 
+	goto :eof

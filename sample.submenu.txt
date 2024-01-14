@@ -1,0 +1,40 @@
+# Set the timeout for the submenu
+set timeout=15
+
+# Set the default variable to the submenu entry you prefer
+set default=4
+
+menuentry 'Submenu Sample Entry 0'  --class other --class icon-linux {
+echo Sample 0
+sleep -v -i 10
+}
+
+menuentry 'Submenu Sample Entry 1'  --class other --class icon-linux {
+echo Sample 1
+sleep -v -i 10
+}
+
+menuentry 'Submenu Sample Entry 2'  --class other --class icon-linux {
+echo Sample 2
+sleep -v -i 10
+}
+
+menuentry 'Submenu Sample Entry 3'  --class other --class icon-linux {
+echo Sample 3
+sleep -v -i 10
+}
+
+menuentry 'Submenu Sample Entry 4'  --class other --class icon-linux {
+echo Sample 4
+sleep -v -i 10
+}
+
+menuentry 'Submenu Sample Entry 5'  --class other --class icon-linux {
+echo Sample 5
+sleep -v -i 10
+}
+
+menuentry 'Submenu Sample Entry 6'  --class other --class icon-linux {
+echo Sample 6
+sleep -v -i 10
+}

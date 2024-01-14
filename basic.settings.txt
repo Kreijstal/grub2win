@@ -1,0 +1,8 @@
+Const  $basrelcurr           = "2.3.8.3"
+Const  $basreljul            = "2460321"
+Const  $basreldate           = "January 11, 2024"
+Const  $basrelbuild          = "1636"
+Const  $basgenstamp          = "20240111141303"
+Const  $bascloverfromrelease = "5155"
+Const  $basgnugrubversion    = "2.12 rc1"
+Global $basefifromrelease    = "156"

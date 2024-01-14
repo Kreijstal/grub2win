@@ -1,0 +1,83 @@
+@echo off
+%systemdrive%
+cd %temp%
+ver | find "5.1" 2>nul
+if "%errorlevel%" equ "0" set xpsystem=y
+cls
+echo.
+echo.
+echo.
+echo         Now Uncompressing the Grub2Win base directory  %basepath%
+echo.
+echo.
+echo.
+call :sleeper 1 
+if "%xpsystem%" neq "y" taskkill /f /t /im grub2win.exe >nul 2>nul
+call :sleeper 2
+call :uncompdir 
+
+call :finalmessage
+
+call :chooseit
+cls
+echo.
+echo.
+if /I "%choosereturn%" EQU "y" (
+	echo.
+	echo     Now restarting Grub2Win
+	echo.
+	call :sleeper 1
+	start %basepath%\grub2win.exe
+)
+echo     The uncompress routine is complete
+if /I "%choosereturn%" EQU "n" call :sleeper 3
+goto 2>nul & del "%~f0"y
+exit
+
+
+:chooseit
+	if "%xpsystem%" equ "y" (call :deciderxp choosereturn 
+	                         goto :eof
+	)
+	choice /n /c yn
+	if %errorlevel% equ 2 set choosereturn=n
+	if %errorlevel% equ 1 set choosereturn=y
+	goto :eof
+
+:deciderxp
+	set /p decision=""
+	if /i NOT "%decision%" equ "n" (
+	    if /i NOT "%decision%" equ "y" (
+	echo Please enter y or n
+	call :sleeper 1
+	call :finalmessage
+	goto deciderxp)
+	)
+	set   "%~1=%decision%"
+	goto :eof
+
+
+:finalmessage
+	cls
+	echo.
+	echo                                    ** Success **
+	echo.
+	echo              The Grub2Win base directory %basepath% has been uncompressed 
+	echo.
+	echo.
+	echo.
+	echo                          Do you want to restart Grub2Win?
+	echo                                    y or n
+	echo.
+	goto :eof
+
+:uncompdir
+	compact /u /q /s:%basepath%
+	call :sleeper 1
+	goto :eof
+
+
+:sleeper
+	set /a seconds = %1 + 1
+	ping -n %seconds% 127.0.0.1 >nul 2>&1 
+	goto :eof

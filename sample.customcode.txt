@@ -1,0 +1,8 @@
+#
+#            This is a sample of custom code
+#
+
+     set root='(hd0,1)'
+     linux   /boot/vmlinuz    root=/dev/sda1    verbose
+     initrd  /boot/initramfs.img
+#

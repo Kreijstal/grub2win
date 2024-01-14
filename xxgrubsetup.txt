@@ -1,0 +1,53 @@
+@echo off
+
+rem    **  This is sample code that can be used to make a .bat file for Grub2Win setup.
+
+rem    **  You must modify the "set rundir" and "set runparms" statements below to suit your installation.
+
+
+	set rundir="C:\Temp\install"
+
+	set runparms=AutoInstall  Shortcut=yes   Drive=c:
+
+
+cls
+call :getadmin
+echo Grub2Win setup Is Running From %rundir% 
+echo.
+echo. 
+echo Starting Grub2Win Setup
+echo.
+echo The Setup Parms are   -    %runparms%
+echo.
+start /w /d  %rundir%\winsource\grub2win.exe %runparms%
+echo.
+echo.
+if %errorlevel% equ 0 echo Grub2Win Setup Completed Successfully
+if %errorlevel% neq 0 echo Grub2Win Setup Failed - errorlevel = %errorlevel%
+echo.
+echo.
+echo.
+pause
+exit
+
+:getadmin
+	ver | find "5.1" 2>nul
+	if "%errorlevel%" equ "0" ( goto :gotadmin )
+	net session >nul 2>&1
+	REM --> If error flag set, we do not have admin.
+	if '%errorlevel%' NEQ '0' (
+	echo Requesting administrative privileges...
+	call :uacprompt )
+
+:gotadmin
+	pushd "%CD%"
+	CD /D "%~dp0"
+	goto :EOF
+
+:uacprompt
+	echo Set UAC = CreateObject^("Shell.Application"^) > "%temp%\getadmin.vbs"
+	set params = %*:"=""
+	echo UAC.ShellExecute "cmd.exe", "/c %~s0 %params%", "", "runas", 1 >> "%temp%\getadmin.vbs"
+	"%temp%\getadmin.vbs"
+	del "%temp%\getadmin.vbs"
+	exit
