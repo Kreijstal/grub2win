@@ -3,8 +3,7 @@
 #include <xxSpecialSecure.au3>
 
 Const  $todaydate        = TimeFormatDate     ("", @YEAR & @MON & @MDAY)
-Const  $todayjul         = StringLeft         ($todaydate, 7)
-Const  $nyzuluoffset     = TimeNYZuluOffset   ()   ; Adjust if needed in 2024
+Const  $nyzuluoffset     = TimeNYZuluOffset   ()   ; Adjust if needed in 2025
 Const  $upticks          = TimeGetUpTicks     ()
 Const  $bootstamp        = TimeGetBootStamp   ()
 Const  $zulupacket       = SpecFuncZuluPacket ()
@@ -224,11 +223,15 @@ Func TimeOffset ()
 EndFunc
 
 Func TimeNYZuluOffset ()
-	Return 5              ; Adjust in 2024 if needed
+	;Return 5              ; Adjust in 2025 if needed
 	$nzoffset = 5
 	Select
-		Case @YEAR = 2024 And  @YDAY > 69 And @yday < 308
-			$nzoffset = 4
+		Case @YEAR = 2024
+			If @YDAY > 69 And @yday < 308 Then $nzoffset = 4
+		Case @YEAR = 2025
+			If @YDAY > 67 And @yday < 306 Then $nzoffset = 4
+		Case @YEAR = 2026
+			If @YDAY > 66 And @yday < 305 Then $nzoffset = 4
 	EndSelect
 	Return $nzoffset
 EndFunc

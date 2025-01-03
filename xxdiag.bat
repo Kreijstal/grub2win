@@ -87,6 +87,7 @@ goto :eof
 	if exist     %diagdir%\backups\efi.partitions         rd /s /q        %diagdir%\backups\efi.partitions
 	if exist     %diagdir%\backups\bcds                   rd /s /q        %diagdir%\backups\bcds
 	if exist     %basedir%\grub.cfg                       copy  /y        %basedir%\grub.cfg       %diagdir%\
+        if exist     %basedir%\grubenv                        copy  /y        %basedir%\grubenv        %diagdir%\grubenv.txt
         if exist     %basedir%\update.log                     copy  /y        %basedir%\update.log     %diagdir%\
 	if exist     %basedir%\userfiles                      xcopy /y /q /e  %basedir%\userfiles      %diagdir%\userfiles\
 	if exist     %diagdir%\userfiles\user.backgrounds     rd /s /q        %diagdir%\userfiles\user.backgrounds
@@ -107,6 +108,8 @@ goto :eof
 	set partout=%partdir%\part.output.txt
 	set errorout=%diagdir%\error.code.txt
 
+        if exist   %tempdir%\part.input.txt    move  /y         %tempdir%\part.input.txt  %partin%
+
 	if defined errorcode (
   	  if "%errorcode%" neq "OnRequest"  (
   	     call :stampit "The Grub2Win diagnostic error code is  -  %errorcode%" %errorout%
@@ -117,51 +120,6 @@ goto :eof
 	echo. 
 
 	call :stampit "DiskPart diagnostic starts" %partout%
-
-	echo   List   Disk		>>  %partin%
-	echo   List   Volume		>>  %partin%
-
-	echo   Select Disk 0		>>  %partin% 
-	echo   Detail Disk		>>  %partin%
-	echo   List   Partition		>>  %partin%
-
-	echo   Select Disk 1		>>  %partin% 
-	echo   Detail Disk		>>  %partin%
-	echo   List   Partition		>>  %partin%
-
-	echo   Select Disk 2		>>  %partin% 
-	echo   Detail Disk		>>  %partin%
-	echo   List   Partition		>>  %partin%
-
-	echo   Select Disk 3		>>  %partin% 
-	echo   Detail Disk		>>  %partin%
-	echo   List   Partition		>>  %partin%
-
-	echo   Select Disk 4		>>  %partin% 
-	echo   Detail Disk		>>  %partin%
-	echo   List   Partition		>>  %partin%
-
-	echo   Select Disk 5		>>  %partin% 
-	echo   Detail Disk		>>  %partin%
-	echo   List   Partition		>>  %partin%
-
-	echo   Select Disk 6		>>  %partin% 
-	echo   Detail Disk		>>  %partin%
-	echo   List   Partition		>>  %partin%
-
-	echo   Select Disk 7		>>  %partin% 
-	echo   Detail Disk		>>  %partin%
-	echo   List   Partition		>>  %partin%
-
-	echo   Select Disk 8		>>  %partin% 
-	echo   Detail Disk		>>  %partin%
-	echo   List   Partition		>>  %partin%
-
-	echo   Select Disk 9		>>  %partin% 
-	echo   Detail Disk		>>  %partin%
-	echo   List   Partition		>>  %partin%
-
-	echo   Exit			>>  %partin%
 
 	diskpart /s %partin%		>>  %partout%
 
@@ -213,13 +171,13 @@ goto :eof
 	echo               Running the BCD diagnostics
 	echo. 
 
-	set bcddir=%diagdir%\bcdlists
-	set bcdeditout=%bcddir%\bcdedit.output.txt
-	set bcdeditoutverb=%bcddir%\bcdedit.verbose.txt
-	set bcdfirmout=%bcddir%\bcdfirmware.output.txt
-	set bcdfirmoutverb=%bcddir%\Diagnostic.BCDRaw.verbose.txt
-	set mountvol=%bcddir%\mountvol.listing.txt
-	md %bcddir%
+	set bootmandir=%diagdir%\bootmanlists
+	set bcdeditout=%bootmandir%\bcdedit.output.txt
+	set bcdeditoutverb=%bootmandir%\bcdedit.verbose.txt
+	set bcdfirmout=%bootmandir%\bcdfirmware.output.txt
+	set bcdfirmoutverb=%bootmandir%\Diagnostic.BCDRaw.verbose.txt
+	set mountvol=%bootmandir%\mountvol.listing.txt
+	md %bootmandir%
 
 	if exist %diagdir%\backups\*.bcd   erase /q         %diagdir%\backups\*.bcd
 	call :stampit "BCDEdit diagnostic starts"           %bcdeditout%
@@ -245,7 +203,7 @@ goto :eof
 	echo The command is - mountvol                  >>  %mountvol% 
 	mountvol.exe                                    >>  %mountvol%  2>nul
 
-	if exist %basedir%\windata\storage\tempfiles    copy %basedir%\windata\storage\tempfiles %bcddir%
+	if exist %basedir%\windata\storage\tempfiles    copy %basedir%\windata\storage\tempfiles %bootmandir%
 	
 	systeminfo                                      >   %diagdir%\system.detail.txt
    

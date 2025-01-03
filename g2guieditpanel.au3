@@ -4,13 +4,31 @@
 Func EditPanelRefresh ($prsub, $prcreate = "")
 	;_ArrayDisplay ($selectionarray, EditPanelGetMode ($prsub, ""))
 	;MsgBox ($mbontop, "Panel Refresh", $selectionarray [$prsub] [$sOSType] & @CR & $selectionarray [$prsub] [$sLoadBy], 1)
-	EditPanelLoadBy      ($prsub, $prcreate)
-	EditPanelDiskAddress ($prsub, $prcreate)
-	If $selectionarray [$prsub] [$sOSType] <> "windows" Then EditPanelSearch      ($prsub, $prcreate)
-	EditPanelCustom      ($prsub, $prcreate)
-	EditPanelWindowsEFI  ($prsub, $prcreate)
+	If $selectionarray [$prsub] [$sOSType] <> "windows" Then
+		EditPanelLoadBy      ($prsub, $prcreate)
+		EditPanelDiskAddress ($prsub, $prcreate)
+		EditPanelSearch      ($prsub, $prcreate)
+		EditPanelLinux       ($prsub, $prcreate)
+		EditPanelCustom      ($prsub, $prcreate)
+	Else
+		EditPanelWindows     ($prsub, $prcreate)
+	EndIf
 	EditPanelIcon        ($prsub, $prcreate)
 	;_ArrayDisplay ($selectionarray)
+EndFunc
+
+Func EditPanelLinux ($pmsub, $pmcreate = "")
+	If $pmcreate = "" Then Return
+	$edithandlewarn   = CommonScaleCreate ("Label", "", 19, 54.5, 60, 9, $SS_CENTER)
+	$editpromptparm   = CommonScaleCreate ("Label", "Linux Boot Parms",    43, 43, 12, 3)
+	$edithandlechknv  = CommonScaleCreate ("Checkbox", "Nvidia Support", 80, 43, 17, 3)
+	If $selectionarray [$pmsub] [$sFamily] = "linux-android" Then EditKernelGUI ($pmsub)
+	$editbuttonstand  = CommonScaleCreate ("Button",   "Restore Standard Parms", 79, 54.5, 19, 3.5)
+	$edithandledevice = CommonScaleCreate ("Label", "", 3, 54.5, 60, 7)
+	$edithandleparm   = CommonScaleCreate ("Edit", CommonParmCalc ($pmsub, "Previous", "Store"), 3, 46, 95, 8, "", "")
+	$editmessageparm  = CommonScaleCreate ("Label", "Standard Parms Are In Use", 79, 54.5, 20, 3)
+	GUICtrlSetBkColor ($editbuttonstand, $mygreen)
+	GUICtrlSetColor   ($editmessageparm, $mymedblue)
 EndFunc
 
 Func EditPanelLoadBy ($plsub, $plcreate = "")
@@ -142,21 +160,36 @@ Func EditPanelSearch ($pssub, $pscreate)
 	GUICtrlSetState ($edithandleselfile, $psbutton)
 EndFunc
 
-Func EditPanelWindowsEFI ($wisub, $wicreate = "")
-	$eswinvert    = 12
-	$wistatus     = EditPanelGetStatus ($selectionarray [$wisub] [$sLoadBy], $modewinefi)
-	For $eswinsub = 0 To Ubound ($bcdwinorder) - 1
-		If $eswinsub > 5 Then ExitLoop
-		If $wicreate <> "" Then
-			$edithandlewinset   [$eswinsub] = CommonScaleCreate ("Button", "Move To Top",       34, $eswinvert + 10,   12, 3.5)
-			$edithandlewininst  [$eswinsub] = CommonScaleCreate ("Label",  "",                  47, $eswinvert + 10.6,  8, 3.5, $SS_Right)
-			$edithandlewintitle [$eswinsub] = CommonScaleCreate ("Input",  "",                  56, $eswinvert + 10.1, 30, 3.5)
-			$eswinvert += 8
+Func EditPanelWindows ($pwsub, $pwcreate = "")
+	$pwwinvert    = 5
+	GUICtrlSetState ($edithandletype, $guishowdis)
+	$pwstatus     = EditPanelGetStatus ($selectionarray [$pwsub] [$sLoadBy], $modewinefi)
+	$pwentries    = Ubound ($bcdwinorder)
+	For $pwwinsub = 0 To $pwentries - 1
+		If $pwwinsub > 5 Then ExitLoop
+		If $pwcreate <> "" Then
+			$edithandlewinset   [$pwwinsub] = CommonScaleCreate ("Button", "Move To Top",       34, $pwwinvert + 10,   12, 3.5)
+			$edithandlewininst  [$pwwinsub] = CommonScaleCreate ("Label",  "",                  47, $pwwinvert + 10.6,  8, 3.5, $SS_Right)
+			$edithandlewintitle [$pwwinsub] = CommonScaleCreate ("Input",  "",                  56, $pwwinvert + 10.1, 30, 3.5)
+			$pwwinvert += 8
 		EndIf
-		GUICtrlSetState ($edithandlewinset   [$eswinsub], $wistatus)
-		GUICtrlSetState ($edithandlewininst  [$eswinsub], $wistatus)
-		GUICtrlSetState ($edithandlewintitle [$eswinsub], $wistatus)
+		GUICtrlSetState ($edithandlewinset   [$pwwinsub], $pwstatus)
+		GUICtrlSetState ($edithandlewininst  [$pwwinsub], $pwstatus)
+		GUICtrlSetState ($edithandlewintitle [$pwwinsub], $pwstatus)
 	Next
+	If $pwcreate <> "" Then
+		If @OSBuild >= 7000 Then
+								 CommonScaleCreate ("Label", "Windows Boot Manager Display Style",  12,  50, 33, 3, $SS_CENTER)
+			$edithandlewinmenu = CommonScaleCreate ("Combo", "",                                    13,  53, 33, 3, -1)
+			GUICtrlSetData  ($edithandlewinmenu, $winmenustring, $newstatuswinmenu)
+		EndIf
+		$edithandlehiber   = CommonScaleCreate ("Checkbox", "Enable Hibernation",               60,  53, 17, 3)
+		If $newstatushiber = "enabled" Then
+			GUICtrlSetState ($edithandlehiber, $GUI_CHECKED)
+		Else
+			GUICtrlSetState ($edithandlehiber, $GUI_UNCHECKED)
+		EndIf
+	EndIf
 EndFunc
 
 Func EditPanelCustom ($pcsub, $pccreate)
@@ -167,19 +200,23 @@ Func EditPanelCustom ($pcsub, $pccreate)
 		GUICtrlSetBKColor  ($edithandleseliso, $mygreen)
 		$editpromptsample  = CommonScaleCreate ("Button",  "Load Sample Code",  82, 17, 14, 3.5)
 		GUICtrlSetBKColor  ($editpromptsample, $mygreen)
-		$editlistcustedit  = CommonScaleCreate ("List", "",                     27, 21, 69, 40, $WS_HSCROLL + $WS_VSCROLL)
+		$editlistcustedit  = CommonScaleCreate ("List", "",                     27, 21, 69, 34, $WS_HSCROLL + $WS_VSCROLL)
 		GUICtrlSetBkColor  ($editlistcustedit, $mylightgray)
-		EndIf
+	EndIf
 	$pcstatus = EditPanelGetStatus ($pcsub, $modecustom)
 	$pcdata   = CustomGetData      ($pcsub)
 	GUICtrlSetState ($editpromptcust,   $pcstatus)
 	GUICtrlSetState ($edithandleseliso, $pcstatus)
 	If $selectionarray [$pcsub][$sOSType] <> "isoboot" Or Not StringInStr ($pcdata, "isopath=") Then _
 		GUICtrlSetState ($edithandleseliso, $guihideit)
-	GUICtrlSetState ($editpromptsample, $pcstatus)
-	If $selectionarray [$pcsub] [$sLoadBy] = $modecustom And $pcdata <> "" And $editerrorok = "yes" Then
-		CustomWriteList ()
-		GUICtrlSetState ($editlistcustedit, $guishowit)
+	GUICtrlSetState     ($editpromptsample, $pcstatus)
+	If $selectionarray  [$pcsub] [$sLoadBy] = $modecustom Then
+		If $pcdata <> "" And $editerrorok = "yes" Then
+			CustomWriteList ()
+			GUICtrlSetState ($editlistcustedit, $guishowit)
+		Else
+			If $pcdata <> "" Then GUICtrlSetState ($editlistcustedit, $guishowdis)
+		EndIf
 	Else
 		GUICtrlSetState ($editlistcustedit, $guihideit)
 	EndIf
@@ -259,6 +296,8 @@ Func EditPanelStackArray ()
 	Dim $linuxpartarray [0] [5]
 	For $sasub = 0 To Ubound ($partitionarray) - 1
 		If $partitionarray [$sasub] [$pPartFamily] <> "Linux" Then ContinueLoop
+		If $partitionarray [$sasub] [$pPartNumber] = 0 And $partitionarray [$sasub] [$pDriveStyle] <> "GPT" _
+			And $partitionarray [$sasub] [$pDriveStyle] <> "MBR" Then ContinueLoop
 		$editlinpartcount += 1
 		If $partitionarray [$sasub] [$pPartUUID]  <> "" Then $editlinuuidcount  += 1
 		If $partitionarray [$sasub] [$pPartLabel] <> "" Then $editlinlabelcount += 1
@@ -284,4 +323,17 @@ Func EditPanelWarnPart ()
 		MsgBox ($mbontop, "", $samsg)
 	EndIf
 	;_ArrayDisplay ($linuxpartarray, $editlinpartcount & " - " & $editlinuuidcount & " - " & $editlinlabelcount)
+EndFunc
+
+Func EditPanelWinMenuStyle ()
+	$msentries            = Ubound ($bcdwinorder)
+	$prevstatuswinmenu    = $bootmenutext
+	If $winmenupolicy     = "standard" Then $prevstatuswinmenu = $bootmenugraph
+	If $msentries         = 1 And $newwindisplayboot <> "yes" And $winmenupolicy <> "standard" Then $prevstatuswinmenu = $bootmenunoshow
+	$newstatuswinmenu     = $prevstatuswinmenu
+	$msstylestring        = "|"
+	If $msentries         = 1 Then $msstylestring &= $bootmenunoshow & "|"
+	$msstylestring        &= $bootmenutext & "|"
+	If @OSBuild           >= 8000 Then $msstylestring &= $bootmenugraph & "|"
+	Return $msstylestring
 EndFunc

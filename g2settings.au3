@@ -30,17 +30,18 @@ Const  $setstattimeoffset     = 20
 Const  $setstatipaddress      = 21
 Const  $setstatusgeo          = 22
 
-Const  $setwarnedbios         = 23
-Const  $setwarnedclover       = 24
-Const  $setwarnedfirmearly    = 25
-Const  $setwarnedkernel       = 26
-Const  $setwarnedbootmenu     = 27
+Const  $setwarnedclover       = 23
+Const  $setwarnedfirmearly    = 24
+Const  $setwarnedkernel       = 25
+Const  $setwarnedbootmenu     = 26
 
-Const  $setinstalldate        = 28
-Const  $setlatestsetup        = 29
+Const  $setinstalldate        = 27
+Const  $setlatestsetup        = 28
 
-Const  $setgnugrubversion     = 30
-Const  $setgnugrubprevinfo    = 31
+Const  $setgnugrubversion     = 29
+Const  $setgnugrubprevinfo    = 30
+Const  $setwallpaperfont      = 31
+Const  $setwallpaperfontauto  = 32
 
 Const  $setefilvlstring       = "\EFI\grub2win\g2bootmgr\gnugrub.efipart.settings.txt"
 Const  $setcloverlvlstring    = "\grub2win.clover.settings.txt"
@@ -51,18 +52,19 @@ Const  $SettingsKey = 1, $SettingsNegative = 2, $SettingsValue = 3, $SettingsFla
 
 Global $setloadedpath
 
-Global $settingsarray [32] [$SettingsFieldCount] = [ _
-    [$setefideployed,     "EFILevelDeployed",    $unknown], [$setefionpartition,    "EFILevelOnPartition",    $unknown], [$setefiforceload,    "EFIForceLoad",     $setno],   _
-	[$setefidefaulttype,  "EFIDefaultType",      $unknown], [$setefioldpath,        "EFIOldPath",             $unknown], [$setefiolddesc,      "EFIOldDesc",       $unknown], _
-	[$setcloverdeployed,  "CloverLevelDeployed", $unknown], [$setcloveronpartition, "CloverLevelOnpartition", $unknown], [$setupnextremind,    "UpdateNextRemind", $unknown], _
-	[$setupremindfreq,    "UpdateRemindFreq",    $unknown], [$setuplastcheck,       "UpdateLastCheck",        $unknown], [$setdailylastused,   "DailyLastUsed",    $unknown], _
-	[$setusecount,        "UseCount",            $unknown], [$setdonatestatus,      "DonateStatus",           $unknown], [$setdonatedate,      "DonateDate",       $unknown], _
-	[$setstattype,        "StatType",            $unknown], [$setstatcountry,       "StatCountry",            $unknown], [$setstatregion,      "StatRegion",       $unknown], _
-	[$setstatcity,        "StatCity",            $unknown], [$setstattimezone,      "StatTimezone",           $unknown], [$setstattimeoffset,  "StatTimeOffset",   $unknown], _
-	[$setstatipaddress,   "StatIPAddress",       $unknown], [$setstatusgeo,         "StatusGeo",              $unknown], [$setwarnedbios,      "WarnedBIOS",       $setno],   _
-	[$setwarnedclover,    "WarnedClover",        $setno],   [$setwarnedfirmearly,   "WarnedFirmEarly",        $setno],   [$setwarnedkernel,    "WarnedKernel",     $setno],   _
-	[$setwarnedbootmenu,  "WarnedBootMenu",      $setno],   [$setinstalldate,       "InstallDate",            $unknown], [$setlatestsetup,     "LatestSetup",      $unknown], _
-	[$setgnugrubversion,  "GNUGrubVersion",      $unknown], [$setgnugrubprevinfo,   "GNUGrubPrevInfo",        $unknown]]
+Global $settingsarray [33] [$SettingsFieldCount] = [ _
+    [$setefideployed,       "EFILevelDeployed",    $unknown], [$setefionpartition,    "EFILevelOnPartition",    $unknown], [$setefiforceload,    "EFIForceLoad",     $setno],   _
+	[$setefidefaulttype,    "EFIDefaultType",      $unknown], [$setefioldpath,        "EFIOldPath",             $unknown], [$setefiolddesc,      "EFIOldDesc",       $unknown], _
+	[$setcloverdeployed,    "CloverLevelDeployed", $unknown], [$setcloveronpartition, "CloverLevelOnpartition", $unknown], [$setupnextremind,    "UpdateNextRemind", $unknown], _
+	[$setupremindfreq,      "UpdateRemindFreq",    $unknown], [$setuplastcheck,       "UpdateLastCheck",        $unknown], [$setdailylastused,   "DailyLastUsed",    $unknown], _
+	[$setusecount,          "UseCount",            $unknown], [$setdonatestatus,      "DonateStatus",           $unknown], [$setdonatedate,      "DonateDate",       $unknown], _
+	[$setstattype,          "StatType",            $unknown], [$setstatcountry,       "StatCountry",            $unknown], [$setstatregion,      "StatRegion",       $unknown], _
+	[$setstatcity,          "StatCity",            $unknown], [$setstattimezone,      "StatTimezone",           $unknown], [$setstattimeoffset,  "StatTimeOffset",   $unknown], _
+	[$setstatipaddress,     "StatIPAddress",       $unknown], [$setstatusgeo,         "StatusGeo",              $unknown], [$setwarnedclover,    "WarnedClover",     $setno],   _
+	[$setwarnedfirmearly,   "WarnedFirmEarly",     $setno],   [$setwarnedkernel,      "WarnedKernel",           $setno],   [$setwarnedbootmenu,  "WarnedBootMenu",   $setno],   _
+	[$setinstalldate,       "InstallDate",         $unknown], [$setlatestsetup,       "LatestSetup",            $unknown], [$setgnugrubversion,  "GNUGrubVersion",   $unknown], _
+	[$setgnugrubprevinfo,   "GNUGrubPrevInfo",     $unknown], [$setwallpaperfont,     "WallpaperFont",              StringStripWS ($fontunicode, 7)],                               _
+	[$setwallpaperfontauto, "WallpaperFontAuto",       $unknown]]
 
 _ArraySort ($settingsarray)
 

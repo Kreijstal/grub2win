@@ -89,16 +89,19 @@ Func BCDGetBootArray ()
 				If StringLen ($gbaline) = 2 Then $gbacurrletter = $gbaline
 			Case StringLeft ($gbaline, 4)  = "path"
 			   $gbacurrpath = BCDParseLine ($gbaline, "path")
-			   If StringInStr ($gbacurrpath, $winloaderefi)   Then $gbacurrtype = "win-instance"
-			   If StringInStr ($gbacurrpath, $bootloaderbios) And $gbacurrletter = $masterdrive Then $biosprevfound = "yes"
+			   If StringInStr ($gbacurrpath, $winloaderefi)    Or  StringInStr ($gbacurrpath, $winloaderbios) Then $gbacurrtype = "win-instance"
+			   If StringInStr ($gbacurrpath, $bootmanagerbios) And $gbacurrletter = $masterdrive Then $biosprevfound = "yes"
 			Case StringLeft ($gbaline,  7)  = "default"
 				$gbadefault  = BCDParseID ($gbaline)
 			Case StringLeft ($gbaline, 12)  = "bootsequence" And $gbacurrtype = $firmmanstring
 				$bcdtestguid = BCDParseID ($gbaline)
 			Case StringLeft  ($gbaline,  7) = "timeout"
-				$bcdprevtime  = BCDParseLine ($gbaline, "timeout")
-				$timeoutwin  = $bcdprevtime
-		 EndSelect
+				$timeoutwin  = BCDParseLine ($gbaline, "timeout")
+			Case StringLeft  ($gbaline, 15) = "displaybootmenu"
+				$prevwindisplayboot = BCDParseLine ($gbaline, "displaybootmenu")
+			Case StringLeft  ($gbaline, 14) = "bootmenupolicy"
+				If $gbacurrid = $gbadefault Then $winmenupolicy  = BCDParseLine ($gbaline, "bootmenupolicy")
+		EndSelect
 		;MsgBox ($mbontop, "Ord", $gbaline & @cr & $gbaorderfound)
 		If $gbaorderfound = "yes" Then
 			$gbaordid    = BCDParseID ($gbaline)
@@ -126,6 +129,7 @@ Func BCDGetBootArray ()
 	$bcdtimestatus = "  BCD Time " & TimeFormatSeconds ("", $bcdtimetotal) & "  "
 	If $bcdtimecount > 1 Then _
 		$bcdtimestatus = "  BCD Count " & $bcdtimecount & "  Average Time " & TimeFormatSeconds ("", ($bcdtimetotal / $bcdtimecount)) & "  "
+	EditPanelWinMenuStyle ()
 EndFunc
 
 Func BCDPopulate ()
@@ -161,9 +165,7 @@ Func BCDPopulate ()
 		$bpsub += 1
 	Wend
 	If Ubound ($bcdorderarray) = 0 Then Dim $bcdorderarray  [1] [$bcdfieldcount + 1]
-	If $firmwaremode = "EFI" Then
-		BCDWinOnly   ()
-	EndIf
+	BCDWinOnly   ()
 EndFunc
 
 Func BCDBreak ($bbordertype, $bbtype, $bbdesc, $bbid, $bbletter, $bbpath)
@@ -280,11 +282,11 @@ Func BCDSetFirmOrder ()
 	Return $bcdorderarray
 EndFunc
 
-Func BCDSetWinOrderEFI ()
+Func BCDSetWinOrder ()
 	If $bcdwinorderflag = "" Then Return
 	$bswdisplay = BCDOrderSort ($bcdwinorder, "win")
 	$bswdefault = $bcdwinorder [0] [$bGUID]
-	BCDSetWinDescEFI ()
+	BCDSetWinDesc ()
 	If $bswdisplay = $bcdwindisplayorig Then Return
 	;MsgBox ($mbontop, "WINORD", "Default " & $bswdefault & @CR & @CR & "Display Order " & $bswdisplay)
 	CommonBCDRun   ('/set {bootmgr} displayorder ' & $bswdisplay, "setorder")
@@ -293,7 +295,7 @@ Func BCDSetWinOrderEFI ()
 	CommonWriteLog ("          The Windows Boot Order Has Been Updated")
 EndFunc
 
-Func BCDSetWinDescEFI ()
+Func BCDSetWinDesc ()
 	;_ArrayDisplay ($bcdwinorder, "Desc")
 	For $bswsub = 0 To Ubound ($bcdwinorder) - 1
 		If $bcdwinorder [$bswsub] [$bItemTitle] = $bcdwinorder [$bswsub] [$bItemTitlePrev] Then ContinueLoop
@@ -322,20 +324,6 @@ Func BCDWinOnly ()
 	_ArraySort ($bcdwinorder, 0, 0, 0, $bSortSeq)
 EndFunc
 
-Func BCDSetWinTimeout ($swtimeout)
-	$swmsg = $swtimeout & " seconds"
-	If $timewinenabled <> "yes" Then
-		$swtimeout = $winbootoff
-		$swmsg     = "disabled"
-	EndIf
-	If $swtimeout <> $bcdprevtime Then
-		CommonBCDRun ("/timeout " & $swtimeout, "settimeout")
-		$swmsg       = "now "     & $swmsg
-	EndIf
-	CommonWriteLog ()
-	CommonWriteLog ("          The Windows boot timeout is " & $swmsg)
-EndFunc
-
 Func BCDSetDefault ($sdtype, $sdflash = "yes")
 	$sddisplay  = BaseFuncCapIt ($sdtype)
 	If $sdflash = "yes" Then CommonFlashStart ("Setting " & $sddisplay & " As Default")
@@ -347,36 +335,6 @@ Func BCDSetDefault ($sdtype, $sdflash = "yes")
 	CommonFlashEnd   ($sddisplay & " Has Been Set As Default")
 	$ordercurrentstring = BCDOrderSort ($bcdorderarray)
 	$efidefaulttype     = $unknown
-EndFunc
-
-Func BCDSetupBIOS ($sbtimeout = $timeoutwin, $sbsetup = "yes")
-	BCDSetWinTimeout ($sbtimeout)
-	If $biosprevfound = "yes" And $sbtimeout = $bcdprevtime Then
-		If $sbsetup = "yes" Then CommonWriteLog ("          The Grub2Win BCD entry already exists. No BCD changes are required.", 2)
-		Return 0
-	EndIf
-	If $biosprevfound = "yes" Then
-		If $sbsetup = "yes" Then CommonWriteLog ("               The Grub2Win BCD entry already exists. No new entry is required.")
-		Return 0
-	EndIf
-	BCDCleanup    ()
-	CommonWriteLog("                Adding the new Grub2Win entry to the BCD for " & $masterdrive & "\" & $biosbootstring)
-	CommonWriteLog('                  The title is -  "' & $biosdesc & '"')
-	$sbarray = CommonBCDRun(' /create /d "' & $biosdesc & '" /application bootsector', "biosentry")
-	If @error Then Return 1
-	$newcheck = $sbarray [4]
-	$bcdnewid = BCDParseId($newcheck)
-	If $bcdnewid <> "" Then
-		CommonWriteLog ("                   BCD ID " & $bcdnewid & " was successfully created", 2)
-		CommonBCDRun   ("/set " & $bcdnewid & " device partition=" & $masterdrive, "biospart")
-		CommonBCDRun   ("/set " & $bcdnewid & " path \" & $biosbootstring, "biospath")
-		CommonBCDRun   ("/displayorder " & $bcdnewid & " /addlast", "biosadd")
-		CommonBCDRun   ("/set {default} bootmenupolicy legacy", "legacy", "")
-		Return 0
-	Else
-		CommonWriteLog("                *** The creation of BCD ID " & $bcdnewid & " failed ***", 2)
-		Return 1
-	EndIf
 EndFunc
 
 Func BCDCleanup ($bcoldrelease = "")
@@ -415,7 +373,7 @@ Func BCDCleanup ($bcoldrelease = "")
 		$bcdelete = ""
 		$bcpath   = $bcdarray [$bcsub] [$bPath]
 		If (StringInStr ($bcpath, $bootmanefi32) Or StringInStr ($bcpath, $bootmanefi64) _
-			Or StringInStr ($bcpath, $bootloaderbios)) And $bcoldrelease = "" Then $bcdelete = "yes"
+			Or StringInStr ($bcpath, $bootmanagerbios)) And $bcoldrelease = "" Then $bcdelete = "yes"
 		If $bcdelete = "" Then ContinueLoop
 		_ArrayAdd ($bcdcleanuparray, "")
 		_ArrayAdd ($bcdcleanuparray, 'Deleting BCD Entry  "' & $bcdarray [$bcsub] [$bItemTitle] & '"   Path = ' & $bcpath)
@@ -449,4 +407,24 @@ Func BCDParseID ($bpiline)
 	$bpiend = StringInStr($bpiline, "}")
 	$bpiresult = StringMid($bpiline, $bpistart, $bpiend - $bpistart + 1)
 	Return $bpiresult
+EndFunc
+
+Func BCDSetWinBootPolicy ($bptype, $bpdisplay = "yes")
+	If $bootos = $xpstring Then Return
+	;MsgBox ($mbontop, "Policy", $bptype & @CR & $winmenupolicy & @CR & $bpdisplay)
+	Select
+		Case $bptype = "standard"
+			CommonBCDRun ("/set {default} bootmenupolicy       standard", "setbootpolicy")
+			CommonBCDRun ("/set {default} graphicsmodedisabled no      ", "setbootgraphicsmode")
+			CommonBCDRun ("/set {default} bootuxdisabled       no      ", "setbootbootux")
+			CommonBCDRun ("/set {default} highestmode          yes     ", "setboothighest")
+			CommonBCDRun ("/deletevalue {bootmgr} displaybootmenu      ", "setbootmenudel")
+			Return
+		Case $bootos <> "Windows 7"
+			CommonBCDRun ("/set {default} bootmenupolicy       legacy",   "setbootpolicy")
+			CommonBCDRun ("/set {default} graphicsmodedisabled yes",      "setbootgraphicsmode")
+			CommonBCDRun ("/set {default} bootuxdisabled       yes",      "setbootbootux")
+			CommonBCDRun ("/set {default} highestmode          no ",      "setboothighest")
+	EndSelect
+	CommonBCDRun ("/set {bootmgr} displaybootmenu " & $bpdisplay, "setbootmenuvar")
 EndFunc

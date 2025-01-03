@@ -1,6 +1,7 @@
 #include-once
 #include <g2basecode.au3>
 
+Global $cleanuparray     = BaseFuncGetCleanup     ()
 Const  $procbits         = BaseFuncGetBits        ()
 Const  $osbits           = BaseFuncGetBits        ("OS")
 Const  $firmwaremode     = BaseFuncGetFirmMode    ()
@@ -12,16 +13,12 @@ Const  $useridalpha      = BaseFuncMakeAlphaNum   ($useridorig)
 Const  $sysutilpath      = BaseFuncGetUtilPath    ()
 Const  $mountvolexec     = $sysutilpath           & "\mountvol.exe"
 Const  $bcdexec          = $sysutilpath           & "\bcdedit.exe"
-Global $cleanuparray     = BaseFuncGetCleanup     ()
 
 Func BaseFuncGetOSVersion ()
 	Select
 		Case @OSVersion = "WIN_11"
 			$govos = "Windows 11"
-			If @OSBuild > $maxosbuild And $runtype = "Setup" Then _
-				MsgBox ($mbwarnok, "** Warning **", "    Grub2Win Has Not Been Tested" _
-				& @CR & "With This Windows Preview Version"                            _
-				& @CR & @CR & "     " & $govos & "    Build " & @OSBuild)
+			BaseFuncCheckWin11 ($govos)
 		Case @OSVersion = "WIN_10"
 			$govos = "Windows 10"
 		Case @OSVersion = "WIN_7"
@@ -80,6 +77,21 @@ Func BaseFuncGetSysMode ()
 	Return $firmwaremode
 EndFunc
 
+Func BaseFuncCheckWin11 ($cwos)
+	If $firmwaremode <> "EFI" Then
+		$cwunsuppmsg  = "Windows 11 Must Be Installed And Run In EFI Mode"       & @CR & @CR
+		$cwunsuppmsg &= "Your Machine Is Not Configured For EFI Firmware"        & @CR & @CR & @CR
+		$cwunsuppmsg &= "Several System Calls Fail In This Environment"          & @CR & @CR
+		$cwunsuppmsg &= "Grub2Win Will Not Work Properly"                        & @CR & @CR & "Run Cancelled"
+		MsgBox ($mbwarnok, "** Microsoft Does Not Support Windows 11 In BIOS Mode **", $cwunsuppmsg, 120)
+		BaseFuncCleanupTemp ("BaseFuncCheckWin11")
+	EndIf
+	If @OSBuild > $maxosbuild And $runtype = "Setup" Then
+		$cwmsg = "    Grub2Win Has Not Been Tested" & @CR & "With This Windows Preview Version"
+		MsgBox ($mbwarnok, "** Warning **", $cwmsg & @CR & @CR & "     " & $cwos & "    Build " & @OSBuild)
+	EndIf
+EndFunc
+
 Func BaseFuncTimeZoneAlt ()
 	$gtzarray    = _Date_Time_GetTimeZoneInformation ()
 	If Ubound ($gtzarray) < 8 Then Return ""
@@ -119,6 +131,7 @@ EndFunc
 Func BaseFuncSing ($bscount, $bsmsg)
 	If $bscount <> 1 Then Return $bsmsg
 	$bsmsg = StringReplace ($bsmsg, "days",       "day")
+	$bsmsg = StringReplace ($bsmsg, "seconds",    "second")
 	$bsmsg = StringReplace ($bsmsg, "these",      "this")
 	$bsmsg = StringReplace ($bsmsg, "entries",    "entry")
 	$bsmsg = StringReplace ($bsmsg, "were",       "was")
@@ -141,7 +154,7 @@ Func BaseFuncArrayRead ($arinput, $arcaller, $arconvert = "", $arerrdisp = "", $
 		$arstring = StringReplace ($arstring, @LF, @CR & @LF)
 	$arstring = StringReplace ($arstring, @LF,  @CR)
 	$arstring = StringReplace ($arstring, @CR & @CR, @CR)
-	If $arconvert   <> "" Then $arstring = _WinAPI_OemToChar ($arstring)
+	If $arconvert <> "" Then $arstring = _WinAPI_OemToChar ($arstring)
 	$ararray  = StringSplit   ($arstring, @CR, 2)
 	If @error Then
 		Dim $ararray [1]
@@ -198,8 +211,8 @@ EndFunc
 Func BaseFuncShowError ($semessage, $sefuncname = @ScriptName, $searray = "", $setitle = "** Grub2Win Error **", $seline = @ScriptLineNumber)
 	$semessage &= @CR & @CR & "Function = " & $sefuncname
 	If Not @Compiled Then $semessage &= @CR & @CR & "Source Line = " & $seline
-	$semessage &= @CR & @CR & "OS = "       & $bootos     & "     Firmware Mode = " & $firmwaremode
-	$semessage &= @CR & @CR & "Grub2Win = " & $basrelcurr & "   Stamp = " & $basgenstamp
+	$semessage &= @CR & @CR & "OS = "       & $bootos     & "     Firmware Mode = "      & $firmwaremode
+	$semessage &= @CR & @CR & "Grub2Win = " & $basrelcurr & "   Build = " & $basrelbuild & "   Stamp = " & $basgenstamp
 	MsgBox ($mbwarnok, $setitle, $semessage, 120)
 	If $searray <> "" Then _ArrayDisplay ($searray, "Array Size " & Ubound ($searray) -1)
 	Exit
@@ -287,9 +300,9 @@ Func BaseFuncCheckVirtual ()
    If IsObj ($cvitems) Then
         For $dummy In $cvitems
 			If StringInStr ($dummy.BIOSVersion (0), "Vbox") Or StringInStr ($dummy.SMBIOSBIOSVersion, "virt") Then _
-				Return @CRLF & @CRLF & "** This Machine Appears To Be Running Under VirtualBox **"
+				Return "VirtualBox"
 			If StringInStr ($dummy.Manufacturer,    "VMware")                                                 Then _
-				Return @CRLF & @CRLF & "** This Machine Appears To Be Running Under VMware **"
+				Return "VMware"
 		Next
    EndIf
    Return ""
@@ -324,6 +337,12 @@ Func BaseFuncUnmountWinEFI ()
 	$winefistatus = ""
 EndFunc
 
+Func BaseFuncContainsData ($cdfile)
+	$cdcontent = BaseFuncSingleRead ($cdfile)
+	If StringStripWS ($cdcontent, 8) = "" Then Return 0
+	Return 1
+EndFunc
+
 Func BaseFuncGetCleanup ()
 	$gcrc = FileInstall ("xxcleanup.txt",    $cleanupbat)     ; Include the xxcleanup.txt file
 	If $gcrc = 0 Then BaseFuncShowError ("** FileInstall Failed **", "BaseFuncGetCleanup")
@@ -341,4 +360,23 @@ EndFunc
 Func BaseFuncGUICtrlDelete (ByRef $cdhandle)
 	If $cdhandle <> "" Then GUICtrlDelete ($cdhandle)
 	$cdhandle     = ""
+EndFunc
+
+Func BaseFuncGetHotkeys ($ghletter)
+	$ghkeys = "|"
+	For $ghsub = 0 To 37
+		If $ghsub > 0 And $hotkeyarray [$ghsub] [1] <> "" And $hotkeyarray [$ghsub] [0] <> $ghletter Then ContinueLoop
+		$ghkeys &= $hotkeyarray [$ghsub] [0] & "|"
+	Next
+	Return $ghkeys
+EndFunc
+
+Func BaseFuncSetHotkey ($shletter, $shflag)
+	$shloc = _ArraySearch ($hotkeyarray, $shletter)
+	If @error Then Return
+	$hotkeyarray [$shloc] [1] = $shflag
+EndFunc
+
+Func BaseFuncAddThousands ($atnumber)
+	Return _WinAPI_GetNumberFormat (0, $atnumber, _WinAPI_CreateNumberFormatInfo (0, 1, 3, '', ',', 1))
 EndFunc

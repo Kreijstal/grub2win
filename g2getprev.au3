@@ -2,7 +2,7 @@
 #include  <g2common.au3>
 
 Func GetPrevConfig ()
-	ThemeCreateHold ()
+	WallpaperCreateHold ()
 	Dim $selectionarray [1] [$selectionfieldcount + 1]
 	Dim $userarray      [1]
 	Dim $autoarray      [1]
@@ -10,9 +10,10 @@ Func GetPrevConfig ()
 	EditPanelStackArray ()
 	If Not FileExists   ($configfile) Then FileCopy ($sourcepath & "\basic.cfg", $configfile, 1)
 	$gfxmode            = UtilEnvGet ($envgfxmode)
-	GetPrevConfigUpdate     ($configfile)
-	If $graphset        = "" Then $graphset   = $autostring
-	If $timeoutgrub      = "" Then $timeoutgrub = 30
+	If $gfxmode         <> "" Then $graphset = $gfxmode
+	GetPrevConfigUpdate ($configfile)
+	If $graphset        = "" Then $graphset    = $autostring
+	If $timeoutgrub     = "" Then $timeoutgrub = 30
 	While 1
 		If UBound ($userarray) = 1 Then
 			$userarray = BaseFuncArrayRead ($sourcepath & $templateuser, "GetPrevConfig")
@@ -24,9 +25,9 @@ Func GetPrevConfig ()
 	WEnd
 	If  $selectionarray [0] [$sOSType] = "" Then
 		CommonArraySetDefaults (0)
-		$selectionarray [0] [$sOSType]     = "windows"
-		$selectionarray [0] [$sClass]      = "windows"
-		$selectionarray [0] [$sFamily]     = "windows"
+		$selectionarray [0] [$sOSType]     = $winstring
+		$selectionarray [0] [$sClass]      = $winstring
+		$selectionarray [0] [$sFamily]     = $winstring
 		$selectionarray [0] [$sLoadBy]     = $modewinauto
 		$selectionarray [0] [$sDefaultOS]  = "DefaultOS"
 		$selectionarray [0] [$sLoadBy]     = ""
@@ -36,19 +37,18 @@ Func GetPrevConfig ()
 		$selectionarray [0] [$sEntryTitle] = $osparmarray [$gpcparmloc] [$pTitle]
 	EndIf
 	CommonSelArraySync ()
-	If $firmwaremode <> "EFI" Then GetPrevWinBIOS ()
 	If Ubound ($selectionarray) < 1 Then Dim $selectionarray [1] [$selectionfieldcount + 1]
 	$editmenuerrors = CommonSelectVerify ()
 	If Not CommonParms ("Setup") And FileExists ($usersectionexp) Then
 		$pcrc = MsgBox ($mbquestyesno, "** Expanded User File Section Found **", "Do You Want To Use The Expanded User Section File?")
 		If $pcrc = $IDYES Then	$usersectionfile = $usersectionexp
 	EndIf
-	If StringStripWS (FileRead ($usersectionfile), 8) <> "" Then
+	If BaseFuncContainsData ($usersectionfile) Then
 		Dim $userarray  [1]
 		GetPrevConfigUpdate ($usersectionfile, $autohighsub + 1, "on")
 	Else
 		CustomUserSectionArray ()
-		BaseFuncArrayWrite ($usersectionfile, $userarray, 2, "", 0)
+		BaseFuncArrayWrite  ($usersectionfile, $userarray, 2, "", 0)
 	EndIf
 	;_ArrayDisplay ($userarray)
 	FileCopy ($usersectionfile, $usersectionorig, 1)
@@ -71,19 +71,7 @@ Func GetPrevConfigUpdate ($cufile, $cuseldim = 0, $cuuserstatus = "off")
 	For $curecsub = 0 To Ubound ($cuinputarray) - 1
 		$curecord = $cuinputarray [$curecsub]
 		$curecstripped = GetPrevCleanRecord ($curecord)
-		If StringInStr($curecord, "end-grub2win-auto-menu-section") Then
-			$cuautostatus = "off"
-		EndIf
-		If StringInStr($curecord, "start") And StringInStr($curecord, "user-section") Then
-			$curecord = $usersectionstart
-			$cuautostatus     = "off"
-			$cuuserstatus     = "on"
-		EndIf
-		If StringInStr($curecord, "end") And StringInStr($curecord, "user-section") Then
-			$curecord = $usersectionend
-			$cuuserstatus = "off"
-			_ArrayAdd($userarray, $curecord)
-		EndIf
+		If StringInStr($curecord, "end-grub2win-auto-menu-section") Then ExitLoop
 		Select
 			Case StringLeft ($curecstripped, 1) = "#"   ; Skip Comments
 			Case GetPrevCheckMenu ($curecord) <> ""
@@ -122,9 +110,9 @@ Func GetPrevConfigUpdate ($cufile, $cuseldim = 0, $cuuserstatus = "off")
 					Case CommonParseStrip ($parseresult1, "gfxmode=")
 						If $gfxmode <> "" Then $parmstripped = $gfxmode
 						$graphset = StringReplace ($parmstripped, ",auto", "")
-						If Not StringInStr ($graphstring,  $graphset)          Then $graphstring &= "|" & $graphset
 						If     StringInStr ($parmstripped, $graphconfigauto)   Then $graphset     = $autostring
 						If Not StringInStr ($graphstring,  $graphset)          Then $graphset     = $autostring
+						If Not StringInStr ($graphstring,  $graphset) And Not StringInStr ($parmstripped, "auto") Then $graphstring &= "|" & $graphset
 					Case CommonParseStrip ($parseresult1, "grub2win_langauto=")
 						If $langfound = "yes" Then $langauto = $parmstripped
 					Case CommonParseStrip ($parseresult1, "lang=")
@@ -223,6 +211,9 @@ Func GetPrevConfigUpdate ($cufile, $cuseldim = 0, $cuuserstatus = "off")
 		If $cuuserstatus = "on" Then _ArrayAdd ($userarray, $curecord)
 	Next
 	If $cuuserstatus = "on" Then GetPrevMiscArray  ()
+	$prevstatushiber = "disabled"
+	If FileExists   ($windowsdrive & "\hiberfil.sys") Then $prevstatushiber = "enabled"
+	$newstatushiber  = $prevstatushiber
 	;_ArrayDisplay ($selectionarray, "Update")
 EndFunc
 
@@ -244,13 +235,13 @@ Func GetPrevParseParms ($pprecord, $ppmenusub)
 	$ppostype = $typecustom
 	$ppicon     = ""
 	$ppcust     = ""
+	$ppimported = ""
 	$ppparmloc  = ""
 	For $ppsub = 1 To Ubound ($pparray) - 1
 		$ppentry = StringStripWS ($pparray [$ppsub], 8)
 		If StringLeft ($ppentry, 6) = "hotkey" Then
 			$pphotkey = StringTrimLeft ($ppentry, 7)
-			If StringInStr ($edithotkeywork, "*" & $pphotkey & "*") Then $pphotkey = "no"
-			If $pphotkey <> "no" Then $edithotkeywork &= "*" & $pphotkey & "*"
+			BaseFuncSetHotkey ($pphotkey, "no")
 			$selectionarray [$ppmenusub] [$sHotKey] = $pphotkey
 			ContinueLoop
 		EndIf
@@ -258,6 +249,10 @@ Func GetPrevParseParms ($pprecord, $ppmenusub)
 		$ppentry = StringTrimLeft ($ppentry, 5)
 		If StringInStr ($ppentry, "icon-")     Then
 			$ppicon = $ppentry
+			ContinueLoop
+		EndIf
+		If StringInStr ($ppentry, "imported")     Then
+			$ppimported = $ppentry
 			ContinueLoop
 		EndIf
 		If StringInStr ($ppentry, "custom_") Then
@@ -268,8 +263,9 @@ Func GetPrevParseParms ($pprecord, $ppmenusub)
 	    If @error Then $ppparmloc = 0
 		$ppostype = $osparmarray [$ppparmloc] [$pType]
 	Next
-	$selectionarray [$ppmenusub] [$sOSType] = $ppostype
-	$selectionarray [$ppmenusub] [$sIcon]   = $ppicon
+	$selectionarray [$ppmenusub] [$sOSType]   = $ppostype
+	$selectionarray [$ppmenusub] [$sIcon]     = $ppicon
+	$selectionarray [$ppmenusub] [$sImported] = $ppimported
 	$ppclass = $osparmarray [$ppparmloc] [$pClass]
 	$selectionarray [$ppmenusub] [$sClass]  = $ppclass
 	$selectionarray [$ppmenusub] [$sFamily] = $osparmarray [$ppparmloc] [$pFamily]
@@ -306,14 +302,12 @@ Func GetPrevInputArray ($iafile)
 				$iacustarray = $iaarrayouter
 				;ContinueLoop
 			EndIf
-
-
 			_ArrayConcatenate ($iaarray, $iacustarray)
 			ContinueLoop
 		EndIf
 		_Arrayadd ($iaarray, $iarecord)
 	Wend
-	;_ArrayDisplay ($iaarray)
+	;_ArrayDisplay ($iaarray, "GetPrevInputArray")
 	Return $iaarray
 EndFunc
 
@@ -343,13 +337,14 @@ Func GetPrevStripCustomCode ($ccarrayin, ByRef $ccarrayinner, ByRef $ccarrayoute
 				_ArrayAdd ($ccarrayouter, $ccarrayin [$ccsub], 0, "", "", $ARRAYFILL_FORCE_SINGLEITEM)
 		EndSelect
 	Next
+	;_ArrayDisplay ($ccarrayin,    "In Detail")
 	;_ArrayDisplay ($ccarrayinner, "Inner")
 	;_ArrayDisplay ($ccarrayouter, "Outer")
 EndFunc
 
 Func GetPrevMiscArray ()
 	Dim $miscarray [0]
-	If StringStripWS (FileRead ($usersectionfile), 8) = "" Then Return
+	If Not BaseFuncContainsData ($usersectionfile) Then Return
 	$matemparray = BaseFuncArrayRead ($usersectionfile, "GetMiscArray")
 	;_ArrayDisplay ($matemparray, "Temp")
 	$mamenuon = ""
@@ -382,23 +377,11 @@ Func GetPrevCheckMenu ($cmrecord)
 	$cmrecord = StringStripWS ($cmrecord, 1)
 	If StringLeft ($cmrecord, 10) <> "menuentry " And StringLeft ($cmrecord, 8) <> "submenu " Then Return 0
 	$cmarray = _StringBetween ($cmrecord, "'", "'")
-	If @error Then Return 0
+	If @error Then
+		$cmarray = _StringBetween ($cmrecord, '"', '"')
+		If @error Then Return 0
+	EndIf
 	;_ArrayDisplay ($cmarray, "GetPrevCheckMenu")
 	$parseresult1 = $cmarray [0]
 	Return 1
-EndFunc
-
-Func GetPrevWinBIOS ()
-	; Remove Windows menuentries from BIOS machines.
-	$gpcsub = 0
-	While 1
-		$gpclimit = Ubound ($selectionarray) - 1
-		If $gpcsub > $gpclimit Then ExitLoop
-		$gpctype = $selectionarray [$gpcsub] [$sOSType]
-		If ($gpctype = "windows" Or $gpctype = "bootfirmware") And $selectionarray [$gpcsub] [$sLoadBy] <> $modeuser Then
-			_ArrayDelete ($selectionarray, $gpcsub)
-		Else
-			$gpcsub += 1
-		EndIf
-	Wend
 EndFunc

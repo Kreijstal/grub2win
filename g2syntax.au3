@@ -19,7 +19,6 @@ Const $sSrcCaller     = 0, $sSrcLine = 1, $sSrcCode = 2, $sSrcLimit = 3
 
 Const $synquotes     = "'",                    $synquoted    = '"'
 Const $synlitquotes  = '"' & $synquotes & '"', $synlitquoted = "'" & $synquoted & "'"
-Const $synreportfile = $storagepath & "\syntax.report.txt"
 
 Global $syninputarray, $synerrorcount, $synerrorarray, $synnotepadpid, $synguihandle, $synsourcemissing
 Global $synmaxlevel, $syncharactercount, $syncurrfilename, $syncurrfileline, $syncurrfileedit
@@ -56,7 +55,8 @@ $synvaluearray [5] [$sCloseDesc] = 'Extra Closing  "fi"  Clause'
 $synvaluearray [5] [$sEvalType]  = "Block"
 
 Func SynMain ($smfilein, $smmenuitem = "")
-	$smtarget  = "File " & $smfilein
+	$smtarget     = "File " & $smfilein
+	$smreportfile = $storagepath & "\syntax.report.txt"
 	If $smmenuitem <> "" Then $smtarget = "The Custom Code For Menu Item " & $smmenuitem
 	While 1
 		$smreturn = SynCheck ($smfilein, $smtarget, $smmenuitem)
@@ -82,7 +82,7 @@ Func SynMain ($smfilein, $smmenuitem = "")
 		MsgBox ($mbinfook, "Syntax Check Succeeded", $smgood, 200)
 	EndIf
 	_ArrayAdd ($synerrorarray, @CR & @TAB & "Status is - " & $smreturn)
-	BaseFuncArrayWrite ($synreportfile, $synerrorarray)
+	BaseFuncArrayWrite ($smreportfile, $synerrorarray)
 	Return $smreturn
 EndFunc
 
@@ -421,8 +421,10 @@ Func SynCheckISO ($cirecord)
 	If StringLeft ($cirecord, 15) = "set kernelpath=" Then $cicheck = StringTrimLeft ($cirecord, 15)
 	If StringLeft ($cirecord, 15) = "set initrdpath=" Then $cicheck = StringTrimLeft ($cirecord, 15)
 	If StringLeft ($cirecord, 14) = "set bootparms="  Then $cicheck = StringTrimLeft ($cirecord, 14)
+	If StringLeft ($cirecord,  9) = "setparams"       Then Return
+	If CommonStringCount ($cicheck, " ") = 0 Then Return
 	If StringLeft ($cicheck,  1)  = $synquotes Or StringLeft ($cicheck,  1)  = $synquoted Then Return
-	$cimsg = "The fields in this variable should be enclosed in quotes." & @CR & @CR & $cicheck
+	$cimsg = "The fields in this variable contain spaces. They should be enclosed in quotes." & @CR & @CR & $cicheck
 	MsgBox ($mbontop, "** ISOBoot Warning **", $cirecord & @CR & @CR & $cimsg)
 EndFunc
 

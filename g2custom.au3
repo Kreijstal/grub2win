@@ -18,17 +18,18 @@ Func CustomGenCode ($gcmenusub)
 		$selectionarray [$gcmenusub] [$sCustomName] = ""
 		FileCopy ($samplecustcode, $gcconfigtempfile, 1)
 	EndIf
-	$gctemparray = BaseFuncArrayRead     ($gcconfigtempfile, "CustomGenCode")
+	$gctemparray = BaseFuncArrayRead ($gcconfigtempfile, "CustomGenCode")
 	Dim   $gcbuildarray [0]
 	Local $gctempinnerarray, $gctempouterarray
 	GetPrevStripCustomCode ($gctemparray,  $gctempinnerarray, $gctempouterarray)
-	;_ArrayDisplay ($gctempinnerarray, "Build")
-	GenMenuHeader      ($gcmenusub,    $gcbuildarray)
+	;_ArrayDisplay ($gctempinnerarray, "Inner")
+	GenMenuHeader      ($gcmenusub,    $gcbuildarray, "")
 	_ArrayAdd          ($gcbuildarray, $customcodestart)
 	_ArrayConcatenate  ($gcbuildarray, $gctempinnerarray)
 	_ArrayAdd          ($gcbuildarray, $customcodeend)
 	If $selectionarray [$gcmenusub][$sReviewPause] > 0 And $selectionarray[$gcmenusub][$sOSType] <> "isoboot" Then _
 		_ArrayAdd ($gcbuildarray, "     g2wsleep $reviewpause")
+	;_ArrayDisplay ($gcbuildarray, "Final")
 	GenMenuFooter ($gcmenusub, $gcbuildarray)
 	;_ArrayDisplay ($gcbuildarray, "Final")
 	BaseFuncArraywrite ($custconfigs & "\" & $gcname, $gcbuildarray)
@@ -133,7 +134,7 @@ Func CustomUserSectionEdit ($seaction)
 				CommonNotepad  ($usersectionfile, "Editing The User Section Code", $handleselectiongui, "", $buttonselectionadd)
 				GUISetBkColor  ($myblue,  $handleselectiongui)
 			EndIf
-			If StringStripWS (FileRead ($usersectionfile), 8) <> "" Then ExitLoop
+			If BaseFuncContainsData ($usersectionfile) Then ExitLoop
 			If CommonQuestion ($mbwarnretrycan, "** No User Section Code Was Entered **", 'Click "Retry" To Enter Code') Then ContinueLoop
 			MsgBox ($mbwarnok, "", "User Section Code " & $seaction & " Was Cancelled")
 			FileCopy ($usersectionorig, $usersectionfile, 1)
@@ -149,7 +150,7 @@ Func CustomUserSectionEdit ($seaction)
 		If $sesynrc = "Cancelled" Then FileCopy ($usersectionorig, $usersectionfile, 1)
 		CommonSelArraySync ()
 		ReDim $selectionarray [$autohighsub + 1] [$selectionfieldcount + 1]
-		If StringStripWS (FileRead ($usersectionfile), 8) = "" Then FileCopy ($sourcepath & $templateempty, $usersectionfile, 1)
+		If Not BaseFuncContainsData ($usersectionfile) Then FileCopy ($sourcepath & $templateempty, $usersectionfile, 1)
 		GetPrevConfigUpdate  ($usersectionfile, $autohighsub + 1, "on")
 	EndIf
 	$scrollforcebottom = "yes"

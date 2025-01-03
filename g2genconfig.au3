@@ -3,16 +3,20 @@
 
 Func GenConfig()
 	;_ArrayDisplay ($selectionarray)
-	TimeGetGenDate    ()
+	TimeGetGenDate     ()
+	If $firmwaremode <> "EFI" Then DirectCheckWindows ()
 	CommonSelArraySync ("yes")
 	EFICheckClover     ()
 	DirRemove          ($custconfigs, 1)
-	$gcthemename = CommonThemeGetOption ("name")
-	$gctimemsg1  = "Includes GNU Grub version " & SettingsGet ($setgnugrubversion) & "     "
-	$gctimemsg2  = "The GNU Grub timeout is "   & $timeoutgrub & " seconds"
-	$gctimemsg3  = "  The Windows timeout is "  & $timeoutwin  & " seconds"
-	If $timegrubenabled = "no" Then $gctimemsg2 = "The Grub timeout is not set."
-	If $timewinenabled  = "no" Then $gctimemsg3 = "  The Windows timeout is disabled."
+	$gcthemename    = WallpaperUpdateFiles ()
+	$gcfontname     = $wallpaperfont
+	If $wallpaperfontauto = "yes" Then $gcfontname &= "  -  Automatic"
+	$gctimemsg1     = "Includes GNU Grub version " & BaseFuncPadRight (SettingsGet ($setgnugrubversion), 13)
+	$gctimemsg2     = "The GNU Grub timeout is "   & $timeoutgrub & " seconds"
+	$gctimemsg3     = ""
+	If $newwindisplayboot  = "yes" Then $gctimemsg3 = _
+		"The Windows Boot Manager will display with a timeout of "  & $timeoutwin & " seconds"
+	If $timegrubenabled = "no"  Then $gctimemsg2 = "The Grub timeout is not set."
 	CommonWriteLog ("          " & "Updating the " & $configstring & " file")
 	Dim $configarray[1]
 	;_ArrayDisplay ($userarray)
@@ -29,20 +33,21 @@ Func GenConfig()
 	_ArrayAdd($configarray, "# "            & $progvermessage)
 	_ArrayAdd($configarray, "# Gen Stamp"   &_StringRepeat (" ", 33) & $genstampdisp)
 	_ArrayAdd($configarray, "#")
-	_ArrayAdd($configarray, "# The grub menu theme is - " & BaseFuncCapIt ($gcthemename))
-	_ArrayAdd($configarray, "#")
+	_ArrayAdd($configarray, "# The grub menu wallpaper is - " & BaseFuncCapIt ($gcthemename))
+	_ArrayAdd($configarray, "# The grub menu font  is     - " & $gcfontname)
 	_ArrayAdd($configarray, "#")
 	$genline = BaseFuncSing ($selectionautocount, "Grub2Win generated " & BaseFuncPadLeft ($selectionautocount, 2) & " menu entries")
 	If FileGetSize ($usersectionfile) > 0 Then $genline &= "     The user section was preserved"
 	_ArrayAdd($configarray, "#  " & $genline)
-	_ArrayAdd($configarray, "#  " & $gctimemsg1 & $gctimemsg2 & $gctimemsg3)
+	_ArrayAdd($configarray, "#  " & $gctimemsg1 & $gctimemsg2)
+	_ArrayAdd($configarray, "#  " & $gctimemsg3)
 	_ArrayAdd($configarray, "#")
 	If Not StringInStr($graphset, "auto") Then $graphset &= ",auto"
 	If $graphset =  "auto" Then $graphset = $graphconfigauto
 	If $graphset = $autostring Then $graphset = $graphconfigauto
 	If $usergraphset <> "" Then $graphset = $usergraphset & ",auto"
 	_ArrayAdd($configarray, "#  The current Windows display resolution is   " & $graphsize)
-	If $gcthemename <> $notheme Then _ArrayAdd ($configarray, "#  Grub resolution will be set at boot time to " & $graphset)
+	If $gcthemename <> $nowallpaper Then _ArrayAdd ($configarray, "#  Grub resolution will be set at boot time to " & $graphset)
 	_ArrayAdd($configarray, "#  The Grub default boot OS is menu entry " & $defaultset)
 	If $langauto = "" Then $langfullselector = LangGetFullSelector ($langselectedcode)
 	_ArrayAdd($configarray, "#  The Grub locale language is " & $langfullselector & "   The locale code is - " & $langselectedcode)
@@ -77,48 +82,41 @@ Func GenConfig()
 		_ArrayAdd($configarray, "set grub2win_efilevel=" & $efileveldeployed)
 		If $winefiuuid <> "" Then _ArrayAdd($configarray, "set grub2win_efiuuid=" & $winefiuuid)
 	EndIf
-	If $gcthemename = $notheme Then
-        _ArrayAdd ($configarray,"set color_normal=white/black")
-		_ArrayAdd ($configarray,"set color_highlight=white/black")
-		_ArrayAdd ($configarray,"set menu_color_normal=light-gray/black")
-	Else
-		_ArrayAdd ($configarray, "set gfxmode=" & $graphset)
-		UtilEnvDelete ($envgfxmode)
-		CommonAddFileToArray ($sourcepath & $templatetheme,   $configarray)
-		If FileExists ($usergfxcmdfile) Then CommonAddFileToArray ($usergfxcmdfile, $configarray)
-		CommonAddFileToArray ($sourcepath & $templategfxmenu, $configarray, "yes")
-	EndIf
 	CommonWriteLog ("              The Grub default OS is menu entry " & $defaultset)
 	CommonWriteLog ("              The Grub language is " & $langfullselector & "  Locale code - " & $langselectedcode)
+	If $gcthemename = $nowallpaper Then
+        _ArrayAdd ($configarray, "set color_normal=white/black")
+		_ArrayAdd ($configarray, "set color_highlight=white/black")
+		_ArrayAdd ($configarray, "set menu_color_normal=light-gray/black")
+		$graphset = $textstring
+	Else
+		_ArrayAdd  ($configarray, "set gfxmode=" & $graphset)
+		CommonAddFileToArray ($sourcepath & $templatetheme,   $configarray)
+		CommonAddFileToArray ($sourcepath & $templategfxmenu, $configarray, "yes")
+		CommonWriteLog ("              Graphics wallpaper  - " & BaseFuncCapIt ($gcthemename))
+		CommonWriteLog ("              Graphics mode       - " & $graphset)
+		CommonWriteLog ("              Graphics font       - " &                $gcfontname)
+	EndIf
+	UtilEnvPut ($envgfxmode, $graphset, "yes")
 	$selectionlimit = UBound($selectionarray) - 1
-	_ArrayAdd($autoarray, "# start-grub2win-auto-menu-section  " & _StringRepeat("*", 51))
+	_ArrayAdd($autoarray, "# " & $automenustart & "  " & _StringRepeat("*", 51))
 	_ArrayAdd($autoarray, "#")
 	For $gcsub = 0 To $selectionlimit
-		If $selectionarray [$gcsub] [$sOSType] = "clover" And $cloverload = "Failed" Then ContinueLoop
+		If $selectionarray [$gcsub] [$sOSType]   = "clover" And $cloverload = "Failed" Then ContinueLoop
 		If $selectionarray [$gcsub] [$sAutoUser] = "user" Then ContinueLoop
-        GenMenuHeader ($gcsub,  $autoarray, "yes")
+        GenMenuHeader  ($gcsub, $autoarray, "yes")
 		GenGetOSFields ($gcsub, $autoarray, "normal")
 		If $selectionarray [$gcsub] [$sLoadBy] <> $modecustom Then GenMenuFooter ($gcsub, $autoarray)
 	Next
-	CommonWriteLog ("              Graphics theme - " & BaseFuncCapIt (CommonThemeGetOption ("name")))
-	CommonWriteLog ("              Graphics mode  - " & $graphset)
-	CommonWriteLog ("              " & $genline)
-	CommonWriteLog ("              " & $gctimemsg1 & $gctimemsg2)
+	CommonWriteLog  ("              " & $genline)
+	CommonWriteLog  ("              " & $gctimemsg1 & $gctimemsg2)
+	GenSetHibernate ()
+	GenSetWinMenu   ()
 	_ArrayAdd ($autoarray, "")
 	_ArrayAdd ($autoarray, "#")
-	_ArrayAdd ($autoarray, "# end-grub2win-auto-menu-section     " & _StringRepeat("*", 51))
-	_ArrayAdd ($autoarray, "#")
-	_ArrayAdd ($autoarray, "#")
-	_ArrayAdd ($autoarray, "#")
-	_ArrayAdd ($autoarray, "# The following user section code is generated from file " & $usersectionfile)
-	_ArrayAdd ($autoarray, "#")
+	_ArrayAdd ($autoarray, "# " & $automenuend & "    " & _StringRepeat("*", 51))
 	_ArrayConcatenate ($configarray, $autoarray)
-	$userarray = BaseFuncArrayRead ($usersectionfile, "GenConfig")
-	_ArrayAdd    ($userarray, "#")
-	_ArrayAdd    ($userarray, $usersectionend)
-	_ArrayInsert ($userarray, 0, "#")
-	_ArrayInsert ($userarray, 0, $usersectionstart)
-	If StringStripWS (FileRead ($usersectionfile), 8) <> "" Then _ArrayConcatenate ($configarray, $userarray)
+	If BaseFuncContainsData ($usersectionfile) Then $configarray = GenUserSection ()
 	BaseFuncArrayWrite($configfile, $configarray)
 	If @error Then
 		CommonWriteLog("                *** Update of the " & $configfile & " file failed ***")
@@ -126,56 +124,55 @@ Func GenConfig()
 	EndIf
 EndFunc
 
-Func GenMenuHeader ($mfsub, ByRef $mfmenuarray, $mfcomment = "")
-	$mfctitleraw = $selectionarray [$mfsub] [$sEntryTitle]
-	$mfctitlehot = "Hotkey="   & $selectionarray [$mfsub] [$sHotkey]
-	$mfchotkey   = "--hotkey=" & $selectionarray [$mfsub] [$sHotkey]
-	$mfskipmenu  = ""
-	If $mfcomment <> "" And ($selectionarray [$mfsub] [$sClass] = "custom" Or _
-	    $selectionarray [$mfsub] [$sClass] = "isoboot"                     Or _
-		$selectionarray [$mfsub] [$sClass] = "submenu") Then $mfskipmenu = "yes"
-	If $selectionarray [$mfsub] [$sHotkey] = "no" Then
-		$mfctitlehot  = _StringRepeat (" ",  8)
-		$mfchotkey    = _StringRepeat (" ", 10)
+Func GenMenuHeader ($mhsub, ByRef $mhmenuarray, $mhcomment)
+	$mhhotchar   = $selectionarray [$mhsub] [$sHotkey]
+	$mhtitle     = $selectionarray [$mhsub] [$sEntryTitle]
+	$mhchotkey   = "--hotkey=" & $mhhotchar
+	$mhskipmenu  = ""
+	If $mhcomment <> "" And ($selectionarray [$mhsub] [$sClass] = "custom" Or _
+	    $selectionarray [$mhsub] [$sClass] = "isoboot"                     Or _
+		$selectionarray [$mhsub] [$sClass] = "submenu") Then $mhskipmenu = "yes"
+	If $selectionarray  [$mhsub] [$sHotkey] = "no" Then	$mhchotkey    = _StringRepeat (" ", 10)
+	$mhtitle    = GenTitleHotKey ($mhtitle, $mhhotchar)
+	$mhmenutype = "menuentry   '"
+	$mhmenudesc = "  Menu Entry "
+	$mhlbracket = "  {"
+	If $selectionarray [$mhsub] [$sOSType] =  "submenu" Then
+		$mhmenutype    = "submenu     '"
+		$mhmenudesc    = "  SubMenu Entry "
 	EndIf
-	$mftitle = BaseFuncPadRight ($mfctitleraw, 56) & $mfctitlehot
-	If StringLen ($mfctitleraw) > 50 Then $mftitle = BaseFuncPadRight ($mfctitleraw, 80)
-	$mfmenutype = "menuentry   '"
-	$mfmenudesc = "  Menu Entry "
-	$mflbracket = "  {"
-	If $selectionarray [$mfsub] [$sOSType] =  "submenu" Then
-		$mfmenutype    = "submenu     '"
-		$mfmenudesc    = "  SubMenu Entry "
+	If $mhskipmenu <> "" Then
+		$mhmenutype    = "#   Comment '"
+		$mhmenudesc    = "  Menu Entry For Custom Code "
+		$mhtitle       = GenTitleHotKey ($mhtitle, $selectionarray [$mhsub] [$sHotkey])
+		$mhlbracket    = ""
 	EndIf
-	If $mfskipmenu <> "" Then
-		$mfmenutype    = "# Menu Comment '"
-		$mfmenudesc    = "  Menu Entry For Custom Code "
-		$mftitle       = BaseFuncPadRight ($mfctitleraw, 53) & $mfctitlehot
-		$mflbracket    = ""
+	_ArrayAdd ($mhmenuarray, "")
+	_ArrayAdd ($mhmenuarray, "#")
+	_ArrayAdd ($mhmenuarray, "#" & $mhmenudesc & $mhsub & "       " & $selectionarray[$mhsub][$sEntryTitle])
+	_ArrayAdd ($mhmenuarray, "#")
+	If $mhsub = $defaultos And $defaultlastbooted = "no" Then
+		_ArrayAdd ($mhmenuarray, "#  ** Grub will boot this entry by default **")
+		_ArrayAdd ($mhmenuarray, "#")
 	EndIf
-	_ArrayAdd ($mfmenuarray, "")
-	_ArrayAdd ($mfmenuarray, "#")
-	_ArrayAdd ($mfmenuarray, "#" & $mfmenudesc & $mfsub & "       " & $selectionarray[$mfsub][$sEntryTitle])
-	_ArrayAdd ($mfmenuarray, "#")
-	If $mfsub = $defaultos And $defaultlastbooted = "no" Then
-		_ArrayAdd ($mfmenuarray, "#  ** Grub will boot this entry by default **")
-		_ArrayAdd ($mfmenuarray, "#")
-	EndIf
-	$mfmenurec  = $mfmenutype & $mftitle & "'"
-	$mfclass    = $selectionarray[$mfsub][$sClass]
-	If $usericonscheck <> "" Then GenCheckIcon ($mfsub)
-	$mfclassrec = "--class " & $mfclass & "   --class " & $selectionarray [$mfsub] [$sIcon]
-	$mfmenurec &= "   " & $mfchotkey & "    " & $mfclassrec & $mflbracket
-	_ArrayAdd ($mfmenuarray, $mfmenurec)
-	If $mfskipmenu <> "" Then Return
-	If $selectionarray [$mfsub] [$sReviewPause] > 0 Then
-		_ArrayAdd ($mfmenuarray, "     set reviewpause=" & $selectionarray [$mfsub] [$sReviewPause])
-		If $selectionarray [$mfsub] [$sFamily] <> "standfunc" Or $selectionarray [$mfsub] [$sOSType] = "clover" Then
-			If $selectionarray [$mfsub] [$sAutoUser] = "auto" And $selectionarray [$mfsub] [$sOSType] <> "windows" Then _
-				_ArrayAdd ($mfmenuarray, "     echo GNU Grub is preparing to boot  " & $selectionarray [$mfsub] [$sEntryTitle])
+	$mhmenurec  = $mhmenutype & $mhtitle & "'"
+	$mhclass    = $selectionarray[$mhsub][$sClass]
+	If $usericonscheck <> "" Then GenCheckIcon ($mhsub)
+	$mhclassrec = "--class " & $mhclass & "   --class " & $selectionarray [$mhsub] [$sIcon]
+	If $selectionarray [$mhsub] [$sImported] <> "" Then $mhclassrec &= "   --class imported"
+	$mhmenurec &= "   " & $mhchotkey & "    " & $mhclassrec & $mhlbracket
+	_ArrayAdd ($mhmenuarray, $mhmenurec)
+	If $mhskipmenu <> "" Then Return
+	If $selectionarray [$mhsub] [$sReviewPause] > 0 Then
+		_ArrayAdd ($mhmenuarray, "     set reviewpause=" & $selectionarray [$mhsub] [$sReviewPause])
+		If $selectionarray [$mhsub] [$sFamily] <> "standfunc" Or $selectionarray [$mhsub] [$sOSType] = "clover" Then
+			If $selectionarray [$mhsub] [$sAutoUser] = "auto" And $selectionarray [$mhsub] [$sOSType] <> "windows" Then _
+				_ArrayAdd ($mhmenuarray, "     echo GNU Grub is preparing to boot  " & $selectionarray [$mhsub] [$sEntryTitle])
 		EndIf
+	Else
+		_ArrayAdd ($mhmenuarray, "     unset reviewpause")
 	EndIf
-	If $selectionarray [$mfsub] [$sGraphMode]  <> $graphnotset Then _ArrayAdd ($mfmenuarray, "     set gfxpayload="  & $selectionarray [$mfsub] [$sGraphMode])
+	If $selectionarray [$mhsub] [$sGraphMode]  <> $graphnotset Then _ArrayAdd ($mhmenuarray, "     set gfxpayload="  & $selectionarray [$mhsub] [$sGraphMode])
 EndFunc
 
 Func GenMenuFooter ($mfsub, ByRef $mfarray)
@@ -186,7 +183,7 @@ Func GenMenuFooter ($mfsub, ByRef $mfarray)
 EndFunc
 
 Func GenGetOSFields ($gofsub, ByRef $gofarray, $gofnormsamp = "normal")
-	Local $goflinux, $gofmisca, $gofmiscb, $gofinitrd, $gofkernel, $gofremix, $gofroot
+	Local $goflinux, $gofmisca, $gofmiscb, $gofinitrd, $gofkernel, $gofremix, $gofroot, $gofparmfedora
 	If $selectionarray[$gofsub][$sLoadBy] = $modechaindisk Then
 		$gofchainstring = "set root='" & "(hd" & $selectionarray[$gofsub][$sChainDrive] & ")'"
 	EndIf
@@ -225,26 +222,28 @@ Func GenGetOSFields ($gofsub, ByRef $gofarray, $gofnormsamp = "normal")
 			_ArrayAdd ($gofarray, "     chainloader $chainbootmgr")
 			Return
 		Case $goffamily = "linux-debian" Or $goffamily= "linux-ubuntu" Or $goffamily= "linux-mint"
-			$goflinux  = "linux   /vmlinuz"
-			$gofinitrd = "initrd  /initrd.img"
+			$goflinux   = "linux   /vmlinuz"
+			$gofinitrd  = "initrd  /initrd.img"
 		Case $goffamily = "linux-suse"
-			$goflinux  = "linux   /vmlinuz"
-			$gofinitrd = "initrd  /initrd"
+			$goflinux   = "linux   /vmlinuz"
+			$gofinitrd  = "initrd  /initrd"
 		Case $goffamily = "linux-fedora"
 			$kernelwarn = "yes"
-			$goflinux  = "linux   /vmlinuz"
-			$gofinitrd = "initrd  /initramfs.img"
+			$goflinux   = "linux   /vmlinuz"
+			$gofinitrd  = "initrd  /initramfs.img"
+			If $selectionarray [$gofsub] [$sRootFilesystem] = "BTRFS" And StringInStr ($selectionarray [$gofsub] [$sBootFilesystem], "EXT") Then _
+				$gofparmfedora = $fedoraflags
 		Case $goffamily = "linux-slack"
-			$goflinux  = "linux   /vmlinuz"
-			$gofinitrd = "initrd  /initrd.gz"
+			$goflinux   = "linux   /vmlinuz"
+			$gofinitrd  = "initrd  /initrd.gz"
 		Case $goffamily = "linux-manjaro"
 			$kernelwarn = "yes"
-			$goflinux  = "linux   /vmlinuz"
-			$gofmisca  = "if [ -f $pathprefix/amd-ucode.img ]   ; then set ucode=/amd-ucode.img   ; fi"
-			$gofmiscb  = "if [ -f $pathprefix/intel-ucode.img ] ; then set ucode=/intel-ucode.img ; fi"
-			$gofinitrd = "initrd  /$ucode  /initramfs.img"
+			$goflinux   = "linux   /vmlinuz"
+			$gofmisca   = "if [ -f $pathprefix/amd-ucode.img ]   ; then set ucode=/amd-ucode.img   ; fi"
+			$gofmiscb   = "if [ -f $pathprefix/intel-ucode.img ] ; then set ucode=/intel-ucode.img ; fi"
+			$gofinitrd  = "initrd  /$ucode  /initramfs.img"
 		Case $selectionarray[$gofsub][$sOSType] = "android" Or $selectionarray[$gofsub][$sOSType] = "phoenix"
-			$gofkernel = "linux  $kernelfile   "
+			$gofkernel  = "linux  $kernelfile   "
 			$gofinitrd  = "initrd $kerneldir/initrd.img"
 		Case $goffamily = "standfunc"
 			 $selectionarray [$gofsub] [$sLoadBy] = "Direct Load"
@@ -301,7 +300,8 @@ Func GenGetOSFields ($gofsub, ByRef $gofarray, $gofnormsamp = "normal")
 	_ArrayAdd($gofarray, "     g2wsetprefix")
 	$goflinux  = StringReplace ($goflinux,  "linux   /", "linux   $pathprefix/")
 	$gofinitrd = StringReplace ($gofinitrd, " /",        " $pathprefix/")
-	If $selectionarray [$gofsub] [$sRootFilesystem] = "BTRFS" Then $gofparm &= " $subvolparm"
+	If $selectionarray [$gofsub] [$sRootFilesystem] = "BTRFS" And $gofparmfedora = "" Then $gofparm &= " $subvolparm"
+	If $gofparmfedora <> "" And Not StringInStr ($gofparm, $fedoraflags) Then $gofparm &= " " & $fedoraflags
 	If $gofpause > 0 And Not StringInStr ($selectionarray[$gofsub][$sOSType], "windows") And _
 	   $selectionarray[$gofsub][$sLoadBy] <> $modecustom And $gofnormsamp = "normal" Then
 	    _ArrayAdd($gofarray, "     echo Boot disk address is  $root")
@@ -366,4 +366,74 @@ Func GenCheckIcon ($cisub)
 	If FileExists ($iconpath & "\user-icon-" & $cinamein & ".png") Then $cinameout = "user-icon-" & $cinamein
 	; MsgBox ($mbontop, "Icon ", "In    = " & $selectionarray [$cisub] [$sIcon] & @CR & @CR & "Out = " & $cinameout)
 	$selectionarray [$cisub] [$sIcon] = $cinameout
+EndFunc
+
+Func GenUserSection ()
+	$userarray = BaseFuncArrayRead ($usersectionfile, "GenUserSection")
+	_ArrayInsert ($userarray, 0, "")
+	_ArrayInsert ($userarray, 1, "#")
+	_ArrayInsert ($userarray, 2, "# The following user section code is generated from file " & $usersectionfile)
+	_ArrayInsert ($userarray, 3, "#")
+	_ArrayInsert ($userarray, 4, $usersectionstart)
+	_ArrayInsert ($userarray, 5, "#")
+	_ArrayAdd    ($userarray,    "#")
+	_ArrayAdd    ($userarray,    $usersectionend)
+	For $ussub = 0 To Ubound ($userarray) - 1
+		$usrec = StringStripWS ($userarray [$ussub], 3)
+		If StringLeft ($usrec, 10) <> "menuentry " Then ContinueLoop
+		$ushloc = StringInStr ($usrec, "--hotkey=")
+		If $ushloc = 0 Then ContinueLoop
+		$ushchar = StringMid   ($usrec, $ushloc + 9, 1)
+		$ussplit = StringSplit ($usrec, "'")
+		If @error Or Ubound ($ussplit) < 3 Then
+			$ussplit = StringSplit ($usrec, '"')
+			If @error Or Ubound ($ussplit) < 3 Then ContinueLoop
+		EndIf
+		$ustitleraw = $ussplit [2]
+		$ustitle    = StringReplace  ($ustitleraw, "Hotkey=" & $ushchar, "")
+		$ustitle    = GenTitleHotKey ($ustitle, $ushchar)
+		$userarray [$ussub] = StringReplace ($usrec, $ustitleraw, $ustitle)
+	Next
+	_ArrayConcatenate ($configarray, $userarray)
+	Return $configarray
+EndFunc
+
+Func GenTitleHotKey ($hktitle, $hkchar)
+	$hkreturn = StringStripWS ($hktitle, $STR_STRIPTRAILING)
+	$hklength = StringLen     ($hkreturn)
+	If $hkchar <> "no" And $wallpaperfontlimit <> "" Then
+		If $hklength  < $wallpaperfontlimit - 2 Then
+			$hkreturn = BaseFuncPadRight ($hkreturn, $wallpaperfontlimit) & "Hotkey=" & $hkchar
+		EndIf
+	EndIf
+	;MsgBox ($mbontop, " Limit " & $wallpaperfontlimit & "   Char " & $hkchar,  $hklength & @CR & @CR & $hktitle & @CR & @CR & BaseFuncPadRight ($hkreturn, 75))
+	Return BaseFuncPadRight ($hkreturn, 75)
+EndFunc
+
+Func GenSetHibernate ()
+	If $newstatushiber = $prevstatushiber Then Return
+	$ghparm = "off"
+	If $newstatushiber = "enabled" Then $ghparm = "on"
+	$shrc = RunWait ("powercfg /hibernate " & $ghparm, "", @SW_HIDE)
+	If $shrc = 0 Then
+		If $ghparm = "on"  Then CommonWriteLog ("              Windows hibernation is enabled")
+		If $ghparm = "off" Then CommonWriteLog ("              Windows hibernation was disabled")
+	Else
+		MsgBox ($mbontop, "** Error **", "Hibernation Is Not Supported On This Machine")
+	EndIf
+EndFunc
+
+Func GenSetWinMenu ()
+	If $newstatuswinmenu = $prevstatuswinmenu Then Return
+	$wmbcdmsg            = ""
+	$wmbcddisplay        = "yes"
+	$wmbcdstyle          = "legacy"
+	If $newstatuswinmenu = $bootmenugraph  Then $wmbcdstyle   = "standard"
+	If $newstatuswinmenu = $bootmenunoshow Then $wmbcddisplay = "no"
+	BCDSetWinBootPolicy ($wmbcdstyle, $wmbcddisplay)
+	CommonWriteLog ("              Windows Menu Style is now set to " & $newstatuswinmenu)
+	If $wmbcddisplay = "no" Then $wmbcdmsg = "not "
+	$wmbcdmsgfull = "              The Windows Boot Manager menu will " & $wmbcdmsg & "display"
+	If $wmbcddisplay = "yes" Then $wmbcdmsgfull &= " with a timeout of " & $timeoutwin & " seconds"
+	CommonWriteLog ($wmbcdmsgfull)
 EndFunc

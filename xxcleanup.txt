@@ -58,6 +58,7 @@ call :closeout
 	goto :eof
 
 :closeout
+        if exist C:\grub2.work ( rd /s /q C:\grub2.work )
 	%systemdrive%
 	cd \
 	echo.
@@ -70,8 +71,8 @@ call :closeout
         if not exist %masterpath% (
               rd /s /q %ProgramData%\Grub2Win 2>nul
               rd /s /q "C:\Documents and Settings\All Users\Application Data\Grub2Win" 2>nul
-        )
-	goto 2>nul & del "%~f0"
+        )  
+           	goto 2>nul & del "%~f0"
 	goto :eof
 
 :sleeper

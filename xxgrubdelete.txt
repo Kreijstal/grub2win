@@ -1,121 +1,149 @@
 @echo off
 %systemdrive%
-cd %temp%
-ver | find "5.1" 2>nul
-if "%errorlevel%" equ "0" set xpsystem=y
+set diag=
 
-if not exist %basepath% goto :delolddir
-
-set message1=         Deleting the Grub2Win product directory  %basepath%
-call :displayit 1 
-
-call :sleeper 1
-call :removedir %basepath%
-call :sleeper 1
-
-:delolddir
-	if not exist %basepath%.old goto :finalcloseout
-	set message1=         Do you want to delete the Grub2Win backup directory
-	set message3=                         %basepath%.old.*   [n/y]?
-	call :displayit 
-	call :chooseit 
-	if "%choosereturn%" EQU "y" call :delbackup
-	if "%choosereturn%" EQU "n" call :skipbackup
-	goto :finalcloseout
+:mainroutine
+        if "%diag%" neq "" echo ** mainroutine **
+        call :clearit
+	%systemdrive%
+	ver | find "5.1" 1>nul
+        if "%errorlevel%" == "0" set xpsystem=y
+        if exist %basepath%  (
+		set message1=         Deleting the Grub2Win product directory  %basepath%
+		call :displayit 2
+		call :removedir %basepath%
+		call :sleeper 1
+	)
+	call :delolddir
+	call :finalcloseout
+exit
 
 :finalcloseout
+        if "%diag%" neq "" echo ** finalcloseout **
+        call :clearit
         call :cleanwork
-	set message1=                         ** Success **
-	set message3=         Grub2Win has been uninstalled from your system
-	call :displayit 3 
+        if not exist %basepath% (
+		set message1=                         ** Success **
+		set message3=         Grub2Win has been uninstalled from your system
+		call :displayit 3 
+        )
 	set quiet=
         if defined LicenseWarnPID call :closewarn
 	goto 2>nul & del "%~f0"
-	exit
+goto :eof
+        
+:delolddir
+        if "%diag%" neq "" echo ** delolddir **
+        call :clearit
+	if not exist %basepath%.old* goto :eof
+        call :clearit
+	set message1=         Do you want to delete the Grub2Win backup directory?
+	set message3=                         %basepath%.old    [n/y]?
+	call :displayit 
+	call :chooseit 
+	if "%choosereturn%" EQU "y" ( set message1=         Deleting the Grub2Win backup directory
+				      set message3=                   %basepath%.old.*
+	                              call :displayit 1
+	                              call :delmultidir
+         )
+	if "%choosereturn%" EQU "n" ( set message2=         The Grub2Win backup directory was not deleted
+	                              call :displayit 2 
+        )
+goto :eof
 
 :cleanwork
-	if "%xpsystem%" equ "y" (
+        if "%diag%" neq "" echo ** cleanwork **
+        if "%xpsystem%" equ "y" (
        	   tskill grub2win.exe >nul 2>nul
        	   rd /s /q "C:\Documents and Settings\All Users\Application Data\Grub2Win" 2>nul
 	) else                  (
            taskkill /f /t /im grub2win.exe >nul 2>nul
            rd /s /q %ProgramData%\Grub2Win 2>nul
         )
-	goto :eof
+goto :eof
 
 :closewarn
+        if "%diag%" neq "" echo ** closewarn **
         call :sleeper 5
 	if "%xpsystem%" neq "y" taskkill /f /t /pid %LicenseWarnPID% >nul 2>nul
         if "%xpsystem%" equ "y" tskill              %LicenseWarnPID% >nul 2>nul
         call :sleeper 1
         rd /s /q %basepath% 2>nul
 	call :sleeper 1
-	goto :eof
-
-:delbackup
-	set message1=         Deleting the Grub2Win backup directory
-	set message3=                   %basepath%.old.*
-	call :displayit 1
-	call :delmultidir
-	goto :eof
-
-:skipbackup
-	set message2=         The Grub2Win backup directory was not deleted
-	call :displayit 2 
-	goto :eof
+goto :eof
 
 :removedir
+        if "%diag%" neq "" echo ** removedir ** %1 
+        call :clearit 
 	call :deleteit %1
         if defined quiet  goto  :eof
-	If %delstatus% neq good (
-	       set /a  retrycount = 0
-	       call :retryit %1
+	if not exist %1 (
+	     set message2=         Directory %1 was successfully deleted
+	     call :displayit 2
+             goto :eof
 	)
-	if %delstatus% equ good (
-	set message2=         Directory %1 was successfully deleted
-	call :displayit 2
-	)
-	goto :eof
+        call :retryit %1
+goto :eof
 
 :deleteit
+        if "%diag%" neq "" echo ** deleteit ** %1
 	set delstatus=bad
 	rd /s /q %1 2>nul
 	call :sleeper 1
 	if not exist %1 set delstatus=good
-	goto :eof
+goto :eof
  
 :retryit
-	set message1=         The delete failed for directory %1
-	set message2=         A file in the directory may be in use
-	set message3=         Do you want to retry the delete [n/y]?
-	call :displayit  
-	call :chooseit
-	if /I "%choosereturn%" EQU "n" ( 
- 	  set message1=         The delete was cancelled
-  	  set message3=         You should remove %1 manually
-  	  call :displayit 
-  	  pause
-  	  goto :eof
+        if "%diag%" neq "" echo ** retryit ** %1
+        rem if "%xpsystem%" equ "y" goto :eof
+        call :clearit
+        set retrycount= 1 2 3
+        for %%a in (%retrycount%) Do (
+                if not exist %1 goto :eof
+		set message1=       The delete failed for directory %1
+		set message2=       A file in the directory may be in use
+		set message3=       Do you want to retry the delete [n/y]?
+                if "%xpsystem%" equ "y" (
+                  set message1=       The delete was cancelled
+		  set message3=       You should remove %1 manually
+  		  call :displayit 
+  		  pause
+  		  goto :eof
+		)
+                call :displayit
+		choice /n /c yn
+	        if ERRORLEVEL 2 ( 
+ 		  set message1=       The delete was cancelled
+  	 	  set message3=       You should remove %1 manually
+  		  call :displayit 
+  		  pause
+  		  goto :eof
+		)
+		set message1=         Retrying the delete of %1
+		set message3=         This is retry number %%a
+		call :displayit 1
+		call :deleteit  %1
 	)
-	set /a retrycount = %retrycount%  +  1
-	set message1=         Retrying the delete of %1
-	set message3=         This is retry number %retrycount%
-	call :displayit 1
-	call :deleteit %1
-	if %delstatus% equ good goto :eof
-	goto :retryit
+        set message1=         %1 was not deleted
+	set message3=               After 3 retrys
+	call :displayit 3
+goto :eof
 
 :delmultidir
+        call :clearit
+        if "%diag%" neq "" echo ** delmultidir **
         set "deldrive=%basepath:~0,3%"
         for /f %%i in ('dir /a:d /b C:\grub2.old*') do (
                 set message1=         Deleting %deldrive%%%i
                 call :displayit 1
-		rd /s /q %deldrive%%%i
+		call :removedir %deldrive%%%i
                 )
-	goto :eof
+goto :eof
 
 :chooseit
-	if "%xpsystem%" equ "y" (call :deciderxp choosereturn 
+        if "%diag%" neq "" echo ** chooseit **
+        set choosereturn=
+       	if "%xpsystem%" equ "y" (call :deciderxp choosereturn 
 	                         call :clearit
 		                 goto :eof
 	)
@@ -123,12 +151,13 @@ call :sleeper 1
  	                        goto :eof
 	)
 	choice /n /c yn
-	if %errorlevel% equ  2  set choosereturn=n
-	if %errorlevel% equ  1  set choosereturn=y
-	call :clearit
-	goto :eof
+	if ERRORLEVEL 1 set choosereturn=y
+        if ERRORLEVEL 2 set choosereturn=n
+goto :eof
 
 :deciderxp
+        if "%diag%" neq "" echo ** deciderxp **
+        call :clearit
 	if defined quiet        (set   "%~1=y"
 	                         goto :eof
 	)
@@ -139,9 +168,10 @@ call :sleeper 1
  	   	goto deciderxp)
 	)
 	set   "%~1=%decision%"
-	goto :eof
+goto :eof
 
 :displayit
+        if "%diag%" neq "" echo ** displayit ** %1
 	if defined quiet goto :eof
 	cls
 	echo.
@@ -155,18 +185,19 @@ call :sleeper 1
 	echo.
 	echo.
 	echo.
-	if "%1" equ "" goto :eof
-	call :clearit
-	call :sleeper %1
-	goto :eof
+        call :clearit
+	if not "%1" equ "" call :sleeper %1
+goto :eof
 
 :clearit
+        if "%diag%" neq "" echo ** clearit **
 	set message1=
 	set message2=
 	set message3=
-	goto :eof
+goto :eof
 
 :sleeper
+        if "%diag%" neq "" echo ** sleeper ** %1
 	set /a seconds = %1 + 1
 	ping -n %seconds% 127.0.0.1 >nul 2>&1 
-	goto :eof
+goto :eof

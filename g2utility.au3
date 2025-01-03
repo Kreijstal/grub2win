@@ -399,12 +399,13 @@ Func UtilGetMachineInfo ()
 		$gmiarray    = BaseFuncArrayRead    ($sysinfotempfile, "UtilGetMachineInfo B")
 		$gmimessage  = "Processor" & @TAB & $procbits    & " Bit" & @TAB & $gmithreads - 1 & " Thread " & $regcpuname & @CRLF & @CRLF
 		$gmimessage &= "Memory   " & @TAB & $sysmemorygb & @TAB
-		$gmimessage &= _WinAPI_GetNumberFormat (0, $sysmemorybytes, _WinAPI_CreateNumberFormatInfo (0, 1, 3, '', ',', 1)) & " Bytes"
+		$gmimessage &= BaseFuncAddThousands ($sysmemorybytes) & " Bytes"
 		$gmimessage &= @CRLF & @CRLF & "Firmware Mode Is " & BaseFuncPadRight ($gmifirm, 12) & @TAB
 		If $firmwaremode = "EFI" Then $gmimessage &= "Secure Boot Is " & $securebootstatus & _
 			"       EFI Level Is " & SettingsGet ($setefideployed)
 		If $firmmoderc <> ""  Then $gmimessage &= @CRLF & @CRLF & "Firmware RC" & @TAB & @TAB & $firmmoderc
-		$gmimessage &= BaseFuncCheckVirtual ()
+		$gmivirtual  = BaseFuncCheckVirtual ()
+		If $gmivirtual <> "" Then $gmimessage &=  @CRLF & @CRLF & "** This Machine Is Running Under " & $gmivirtual & " **"
 		For $gmisub = 3 To Ubound ($gmiarray) - 2
 			$gmirecord     = StringReplace  ($gmiarray   [$gmisub], '"',  '')
 			$gmirecord     = StringReplace  ($gmirecord, 'dword:000000',  '')
@@ -451,13 +452,6 @@ Func UtilEnvPut ($epkey, $epvalue, $epwrite = "")
 		If $epvalue = "" Then _ArrayDelete ($envarray, $eploc)
 	EndIf
 	If $epwrite <> "" Then UtilEnvWrite ()
-EndFunc
-
-Func UtilEnvDelete ($edkey)
-	$edloc = _ArraySearch ($envarray, $edkey)
-	If @error Then Return
-	_ArrayDelete ($envarray, $edloc)
-	UtilEnvWrite ("yes")
 EndFunc
 
 Func UtilEnvWrite ($evchanged = $envchanged)

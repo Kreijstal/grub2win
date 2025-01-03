@@ -10,7 +10,6 @@ If StringInStr (@ScriptName, "g2common") Then Exit
 
 Const  $temploghandle     = FileOpen            ($templogfile, $FO_OVERWRITE)
 
-                            CommonCheckMode     ()
                             CommonGetAllInfo    ()
 Const  $runcolor          = CommonGetColor      ()
                             CommonScaleIt       ()
@@ -44,13 +43,13 @@ Global $graphstandard     = SpecFuncGetResolutions ()
 
 #include <g2xp.au3>
 #include <g2bcd.au3>
-#include <g2theme.au3>
 #include <g2setup.au3>
 #include <g2custom.au3>
 #include <g2guiefi.au3>
 #include <g2syntax.au3>
 #include <g2update.au3>
 #include <g2posrog.au3>
+#include <g2direct.au3>
 #include <g2guiedit.au3>
 #include <g2guiicon.au3>
 #include <g2getprev.au3>
@@ -62,6 +61,7 @@ Global $graphstandard     = SpecFuncGetResolutions ()
 #include <g2genconfig.au3>
 #include <g2guiimport.au3>
 #include <g2uninstall.au3>
+#include <g2wallpaper.au3>
 #include <g2guieditpanel.au3>
 #include <g2guifirmorder.au3>
 #include <g2guiselection.au3>
@@ -71,7 +71,7 @@ CommonPathSet      ()
 CommonCheckRunning ($runtype)
 
 Func CommonPathSet ($spmasterpath = $masterpath)
-	Dim                 $themematrixarray [0] [4]
+	Dim                 $wallpapermatrixarray [0] [4]
 	$masterlogfile    = $spmasterpath    & "\update.log"
 	$datapath         = $spmasterpath    & "\windata"
 	$storagepath      = $datapath        & "\storage"
@@ -79,21 +79,20 @@ Func CommonPathSet ($spmasterpath = $masterpath)
 	$configfile       = $spmasterpath    & "\" & $configstring
 	$masterexe        = $spmasterpath    & "\" & $exestring
 	$sourcepath       = $spmasterpath    & "\winsource"
-   	$themepath        = $spmasterpath    & "\themes"
+   	$wallpaperpath    = $spmasterpath    & "\themes"
     $bootmanpath      = $spmasterpath    & "\" & $bootmandir
 	$envfile          = $spmasterpath    & "\grubenv"
 	$userfiles        = $spmasterpath    & "\userfiles"
 	$diagpath         = $spmasterpath    & "\diagnose"
+	$userthemes       = $userfiles       & "\user.themes"
 	$userbackgrounds  = $userfiles       & "\user.backgrounds"
 	$userclockfaces   = $userfiles       & "\user.clockfaces"
 	$usericons        = $userfiles       & "\user.icons"
-	$userfonts        = $userfiles       & "\user.fonts"
 	$usermiscfiles    = $userfiles       & "\user.misc.files"
 	$usermiscimport   = $usermiscfiles   & "\import.source"
 	$usersectionfile  = $userfiles       & "\usersection.cfg"
 	$usersectionexp   = $userfiles       & "\usersection.expanded.cfg"
 	$usergfxmodefile  = $userfiles       & "\gfxmode.cfg"
-	$usergfxcmdfile   = $userfiles       & "\gfxcommands.cfg"
 	$usersectionorig  = $windowstempgrub & "\usersection.original"
 	$custconfigs      = $datapath        & "\customconfigs"
 	$custconfigstemp  = $windowstempgrub & "\customconfigs"
@@ -114,29 +113,29 @@ Func CommonPathSet ($spmasterpath = $masterpath)
 	$customworkfile   = $custconfigstemp & "\" & $custworkstring
     $sysinfotempfile  = $windowstempgrub & "\system.info.temp.txt"
 	$utillogfile      = $windowstempgrub & "\utilityscan.log.txt"
-    $themebackgrounds = $themepath       & "\backgrounds"
-	$themetempback    = $windowstempgrub & "\backgrounds"
-	$iconpath         = $themepath       & "\icons"
-    $fontpath         = $spmasterpath    & "\fonts"
-    $themeconfig      = $themepath       & "\custom.config"
-    $screenshotfile   = $themepath       & "\custom.screenshot.jpg"
-	$themecustopt     = $themepath       & "\custom.options.txt"
-    $themecustback    = $themepath       & "\custom.background.png"
-    $themestandpath   = $themepath       & "\options.standard"
-    $themelocalpath   = $themepath       & "\options.local"
-	$themecommon      = $themepath       & "\common"
-	$thememasterpath  = $themepath       & "\master"
-    $themefaces       = $themecommon     & "\clockfaces"
-    $themecolorsource = $themecommon     & "\colorsource"
-	$themecolorcustom = $themecommon     & "\colorcustom"
-	$themestatic      = $themecommon     & "\static"
-	$themeempty       = $themestatic     & "\image.empty.png"
-	$themedeffile     = $thememasterpath & "\options.txt"
-    $themetemplate    = $thememasterpath & "\config.template.txt"
-	$themetemp        = $windowstempgrub & "\themes"
-	$themetempfiles   = $themetemp       & "\files"
-	$themetemplocal   = $themetemp       & "\options.local"
-	$themetempcust    = $themetemp       & "\colorcustom"
+    $wallpaperbackgrounds = $wallpaperpath       & "\backgrounds"
+	$wallpapertempback    = $windowstempgrub & "\backgrounds"
+	$iconpath             = $wallpaperpath       & "\icons"
+    $fontpath             = $spmasterpath    & "\fonts"
+    $wallpaperconfig      = $wallpaperpath       & "\custom.config"
+    $screenshotfile       = $wallpaperpath       & "\custom.screenshot.jpg"
+	$wallpapercustopt     = $wallpaperpath       & "\custom.options.txt"
+    $wallpapercustback    = $wallpaperpath       & "\custom.background.png"
+    $wallpaperstandpath   = $wallpaperpath       & "\options.standard"
+    $wallpaperlocalpath   = $wallpaperpath       & "\options.local"
+	$wallpapercommon      = $wallpaperpath       & "\common"
+	$wallpapermasterpath  = $wallpaperpath       & "\master"
+    $wallpaperfaces       = $wallpapercommon     & "\clockfaces"
+    $wallpapercolorsource = $wallpapercommon     & "\colorsource"
+	$wallpapercolorcustom = $wallpapercommon     & "\colorcustom"
+	$wallpaperstatic      = $wallpapercommon     & "\static"
+	$wallpaperempty       = $wallpaperstatic     & "\image.empty.png"
+	$wallpaperdeffile     = $wallpapermasterpath & "\options.txt"
+    $wallpapertemplate    = $wallpapermasterpath & "\config.template.txt"
+	$wallpapertemp        = $windowstempgrub & "\themes"
+	$wallpapertempfiles   = $wallpapertemp       & "\files"
+	$wallpapertemplocal   = $wallpapertemp       & "\options.local"
+	$wallpapertempcust    = $wallpapertemp       & "\colorcustom"
 	$samplecustcode   = $sourcepath      & "\sample.customcode.txt"
     $sampleisocode    = $sourcepath      & "\sample.isoboot.txt"
     $samplesubcode    = $sourcepath      & "\sample.submenu.txt"
@@ -278,7 +277,8 @@ Func CommonSaveListings ()
 	FileDelete      ($workdir & "\grub2win.*.txt")
 	If FileExists   ($systemdatafile) Then CommonLogStack ($slfrontarray, $systemdatafile, "System and Secure Boot Information")
 	If FileExists   ($configfile)     Then CommonLogStack ($slfrontarray, $configfile,     "grub.cfg")
-	If FileExists   ($datapath & $setuplogstring) Then CommonLogStack ($slfrontarray, $datapath & $setuplogstring, "Grub2Win Setup")
+	If FileExists   ($datapath & $extractlogstring) Then CommonLogStack ($slfrontarray, $datapath & $extractlogstring, "Grub2Win Extract")
+	If FileExists   ($datapath & $setuplogstring)   Then CommonLogStack ($slfrontarray, $datapath & $setuplogstring,   "Grub2Win Setup")
 	BaseFuncArrayWrite ($masterlogfile, $slfrontarray, 1)
 EndFunc
 
@@ -333,37 +333,38 @@ Func CommonParseStrip($pptext, $ppsearch)
 	Return $parmstripped
 EndFunc
 
-Func CommonSelArraySync ($sasrenametemp = "")
+Func CommonSelArraySync ($assrenametemp = "")
 	;_ArrayDisplay ($selectionarray, "Sync Before")
 	$defaultstring      = $lastbooted & "|"
 	$selectionautocount = 0
 	$selectionusercount = 0
 	$cloverfound        = ""
 	$osfound            = ""
-	For $sassub = 0 To Ubound ($selectionarray) - 1
-		If $selectionarray [$sassub] [$sAutoUser] =  "auto" Then
-			$autohighsub         = $sassub
+	For $asssub = 0 To Ubound ($selectionarray) - 1
+		If $selectionarray [$asssub] [$sAutoUser] =  "auto" Then
+			$autohighsub         = $asssub
 			$selectionautocount += 1
 		Else
 			$selectionusercount += 1
 		EndIf
-		If $selectionarray [$sassub] [$sOSType] =  "clover"  Then $cloverfound = "yes"
-		If $selectionarray [$sassub] [$sFamily] <> "windows" And $selectionarray [$sassub] [$sFamily] <> "standfunc" Then $osfound = "yes"
-		If $selectionarray [$sassub] [$sBootDisk] <> "" Then $selectionarray [$sassub] [$sBootFileSystem] = CommonGetSearch ($selectionarray [$sassub] [$sBootDisk], "FSys")
-		If $selectionarray [$sassub] [$sRootDisk] <> "" Then $selectionarray [$sassub] [$sRootFileSystem] = CommonGetSearch ($selectionarray [$sassub] [$sRootDisk], "FSys")
-		If $sassub = 0 Or $selectionarray [$sassub] [$sDefaultOS] = "DefaultOS" Then
-			$defaultos    = $sassub
-			$defaultset   = $sassub & "  -  " & $selectionarray [$sassub][$sEntryTitle]
+		If $selectionarray [$asssub] [$sOSType] =  $winstring  Then $selectionwinentry = $asssub
+		If $selectionarray [$asssub] [$sOSType] =  "clover"    Then $cloverfound = "yes"
+		If $selectionarray [$asssub] [$sFamily] <> $winstring And $selectionarray [$asssub] [$sFamily] <> "standfunc" Then $osfound = "yes"
+		If $selectionarray [$asssub] [$sBootDisk] <> "" Then $selectionarray [$asssub] [$sBootFileSystem] = CommonGetSearch ($selectionarray [$asssub] [$sBootDisk], "FSys")
+		If $selectionarray [$asssub] [$sRootDisk] <> "" Then $selectionarray [$asssub] [$sRootFileSystem] = CommonGetSearch ($selectionarray [$asssub] [$sRootDisk], "FSys")
+		If $asssub = 0 Or $selectionarray [$asssub] [$sDefaultOS] = "DefaultOS" Then
+			$defaultos    = $asssub
+			$defaultset   = $asssub & "  -  " & $selectionarray [$asssub][$sEntryTitle]
 		EndIf
-		$defaultstring   &= $sassub & "  -  " & $selectionarray [$sassub][$sEntryTitle] & "|"
-		$sasoldcust = $selectionarray[$sassub] [$sCustomName]
-		$sasnewcust = ""
-		If $selectionarray [$sassub] [$sOSType] = $modecustom And $selectionarray[$sassub] [$sAutoUser] = "auto" Then _
-			$sasnewcust = CommonCustomName ($selectionarray [$sassub] [$sEntryTitle])
-		$selectionarray [$sassub] [$sCustomName] = $sasnewcust
-		;MsgBox ($mbontop, "Cust " & $sassub, $selectionarray [$sassub] [$sOSType] & @CR & @CR & CommonCustomName ($selectionarray [$sassub] [$sEntryTitle]) & @CR & @CR & $selectionarray [$sassub] [$sEntryTitle])
-		If $sasrenametemp = "" Or $sasnewcust = $sasoldcust Then ContinueLoop
-		FileMove ($custconfigstemp & "\" & $sasoldcust, $custconfigstemp & "\" & $sasnewcust, 9)
+		$defaultstring   &= $asssub & "  -  " & $selectionarray [$asssub][$sEntryTitle] & "|"
+		$assoldcust = $selectionarray[$asssub] [$sCustomName]
+		$assnewcust = ""
+		If $selectionarray [$asssub] [$sOSType] = $modecustom And $selectionarray[$asssub] [$sAutoUser] = "auto" Then _
+			$assnewcust = CommonCustomName ($selectionarray [$asssub] [$sEntryTitle])
+		$selectionarray [$asssub] [$sCustomName] = $assnewcust
+		;MsgBox ($mbontop, "Cust " & $asssub, $selectionarray [$asssub] [$sOSType] & @CR & @CR & CommonCustomName ($selectionarray [$asssub] [$sEntryTitle]) & @CR & @CR & $selectionarray [$asssub] [$sEntryTitle])
+		If $assrenametemp = "" Or $assnewcust = $assoldcust Then ContinueLoop
+		FileMove ($custconfigstemp & "\" & $assoldcust, $custconfigstemp & "\" & $assnewcust, 9)
 	Next
 	If $defaultlastbooted = "yes" Then $defaultset = $lastbooted
 	; _ArrayDisplay ($selectionarray, "Sync After " & $osfound & "  " & $selectionusercount)
@@ -509,8 +510,8 @@ Func CommonDiskVerify ($dvsub)
 		$dvbootdisk   = $selectionarray [$dvsub] [$sBootDisk]
 		$dvsearch     = $selectionarray [$dvsub] [$sRootSearchArg]
 		Select
-			Case $dvfamily = "windows"   Or $dvclass  = "custom" Or $dvloadby = $modecustom
-			Case $dvclass  = "chaindisk" Or $dvloadby = "no"
+			Case $dvfamily = $winstring   Or $dvclass  = "custom" Or $dvloadby = $modecustom
+			Case $dvclass  = "chaindisk"  Or $dvloadby = "no"
 			Case $dvfamily = "linux-android" Or $dvclass = "chainfile"
 				CommonEFIMountWin ()
 				If StringMid (CommonGetBootFile ($dvsearch), 2, 1) <> ":" Then $dverror = "search"
@@ -532,7 +533,7 @@ Func CommonArraySetDefaults($asdsub, $asdreset = "")
 	$asdtype    = $osparmarray [$asdparmloc] [$pType]
 	$asdtitle   = $osparmarray [$asdparmloc] [$pTitle]
 	$asdclass   = $osparmarray [$asdparmloc] [$pClass]
-	If $asdclass    = "windows"   Then $selectionarray[$asdsub][$sLoadBy] = $modewinauto
+	If $asdclass    = $winstring  Then $selectionarray[$asdsub][$sLoadBy] = $modewinauto
 	If $asdtype     = "android"   Then $selectionarray[$asdsub][$sLoadBy] = $modeandroidfile
 	If $asdtype     = "phoenix"   Then $selectionarray[$asdsub][$sLoadBy] = $modephoenixfile
 	If $asdclass    = "chaindisk" Then $selectionarray[$asdsub][$sLoadBy] = $modechaindisk
@@ -553,7 +554,7 @@ Func CommonArraySetDefaults($asdsub, $asdreset = "")
 	If $selectionarray [$asdsub] [$sLoadBy] = $modehardaddress Or $selectionarray [$asdsub] [$sLoadBy] = $modepartlabel Then _
 		CommonSetDefault ($selectionarray [$asdsub] [$sLayout], $layoutrootonly,   $asdreset)
 	CommonSetDefault ($selectionarray [$asdsub] [$sRootSearchArg], "",             $asdreset)
-	CommonSetDefault ($selectionarray [$asdsub] [$sReviewPause], "",                $asdreset)
+	CommonSetDefault ($selectionarray [$asdsub] [$sReviewPause], 0,                $asdreset)
 	CommonSetDefault ($selectionarray [$asdsub] [$sIcon], CommonGetIcon ($asdsub), $asdreset)
 	CommonSetDefault ($selectionarray [$asdsub] [$sAutoUser], "auto",              $asdreset)
 EndFunc
@@ -563,7 +564,7 @@ Func CommonGetIcon ($gisub)
 	If $selectionarray [$gisub] [$sFamily] = "custom" Then $giicon = "custom"
 	If StringLeft ($selectionarray [$gisub] [$sFamily], 5) = "chain"  Then $giicon = "chain"
 	If $selectionarray [$gisub] [$sOSType] = "clover" Then $giicon = "clover-osx"
-	If StringInStr ($selectionarray[$gisub][$sIcon],  "windows") Then $giicon = "windows"
+	If StringInStr ($selectionarray[$gisub][$sIcon],  $winstring) Then $giicon = $winstring
 	Return "icon-" & $giicon
 EndFunc
 
@@ -573,12 +574,12 @@ Func CommonSetupSysLines ($sslefilevel, $ssletype = "")
 	If $firmwaremode   = "EFI" Then
 		$cemode        = $ssletype & "EFI level is " & $sslefilevel
 		$syslinesecure = "Secure Boot is " & $securebootstatus
-		EndIf
+	EndIf
 	$syslineos &= $cemode
 EndFunc
 
 Func CommonEndIt ($eiresult, $eireturnit = "no", $eifailmsg = "", $eipause = "yes")
-	CommonFlashEnd  ("")
+	CommonFlashEnd    ("")
 	BaseFuncGUIDelete ($handlemaingui)
 	$handlemaingui  = CommonScaleCreate ("GUI", $headermessage & "      L=" & $langheader, -1, -1, 100, 100, -1)
 	BaseFuncGUICtrlDelete ($mainloghandle)
@@ -627,15 +628,10 @@ Func CommonEndIt ($eiresult, $eireturnit = "no", $eifailmsg = "", $eipause = "ye
 	If $runtype  =  $parmsetup       Then $cetype = "Setup"
 	If CommonParms ($parmfromupdate) Then $cetype = "Update"
 	If $eiresult =    "Success" Then
-		If $firmwaremode    = "BIOS" And SettingsGet ($setwarnedbios)   = $setno Then
-		   CommonWarn ("BIOS System Boot", $setwarnedbios,                       _
-					   "    ** This is a BIOS firmware System **"  & @CR & @CR & _
-	                   "Microsoft Windows must be loaded by the"   & @CR & @CR & _
-	                   "              Windows Boot Manager"        & @CR & @CR)
-	    ElseIf $kernelwarn  = "yes"  And SettingsGet ($setwarnedkernel) = $setno Then
+		If $kernelwarn  = "yes"  And SettingsGet ($setwarnedkernel) = $setno Then
 		   CommonWarn ("Fedora And Manjaro", $setwarnedkernel,                             _
 					   "Fedora and Manjaro installs require an additional step." & @CR & _
-		               "You must run the Grub2Win kernset.sh script in Linux.")
+		               "You must run the Grub2Win xxkernlink.sh script in Linux.")
 		EndIf
 		If $runtype = "grub2win"     Then CommonCheckFirmDate ()
 		CommonDonate ()
@@ -659,18 +655,20 @@ Func CommonWarn ($cwhelp, $cwsetting, $cwmsg)
 	Return $cwrc
 EndFunc
 
-Func CommonThemeGetOption ($tgoparm, $tgolower = "", $tgoarray = $themetempoptarray)
+Func CommonWallpaperGetOption ($tgoparm, $tgolower = "", $tgoarray = $wallpapertempoptarray)
 	$tgoloc = _ArraySearch ($tgoarray, $tgoparm, 0, 0, 0, 0, 0, 2)
 	If @error Then Return ""
 	$tgovalue = $tgoarray [$tgoloc] [3]
 	If $tgolower <> "" Then $tgovalue = StringLower ($tgovalue)
+	;_ArrayDisplay ($tgoarray, $tgoparm)
 	Return $tgovalue
 EndFunc
 
-Func CommonThemePutOption ($tpoparm, $tpovalue, ByRef $tpoarray)
+Func CommonWallpaperPutOption ($tpoparm, $tpovalue, ByRef $tpoarray, $tpolower = "yes")
 	$tpoloc = _ArraySearch ($tpoarray, $tpoparm, 0, 0, 0, 0, 0, 2)
 	If @error Then Return ""
-	$tpoarray [$tpoloc] [3] = StringLower ($tpovalue)
+	If $tpolower <> "" Then $tpovalue = StringLower ($tpovalue)
+	$tpoarray [$tpoloc] [3] = $tpovalue
 EndFunc
 
 Func CommonKernelArray ($kasub, $kaparm = $selectionarray [$kasub] [$sBootParm])
@@ -810,6 +808,7 @@ Func CommonDatabase  ()
 		CommonFlashStart  ($runtype & " Is Scanning Your Disks And Partitions", "", 1000, "", "keep")
 		PartBuildDatabase ()
 		CommonFlashStart  ("Loading Resources", "", "", "", "keep")
+		If $partcountflash > 0 Then CommonFlashStart  ("This May Take Longer When Flash Drives Are Plugged In", "", "", "", "keep")
 		;If $cdkeepmessage <> "" Then CommonFlashEnd     ("", 0)
 	EndIf
 	$partscanned      = "yes"
@@ -827,7 +826,7 @@ Func CommonMailIt ($miattachtype, $miattachdata, $mierrdesc = "")
 		$minormal     &= @CRLF & "Please zip up directory" & $mispacer & $miattachdata & @CRLF
 	EndIf
 	$mimanual    = "Create an email and send it to to:"
-	$mimanual   &= $midouble & $myemail & $midouble & "for diagnostic analysis." & $midouble
+	$mimanual   &= $midouble & $diagemail & $midouble & "for diagnostic analysis." & $midouble
 	$minormal   &= @CRLF & "Please make sure the zipped diagnostic file" & $midatamsg
 	$minormal   &= "is attached when you send the email !!"
 	$micommand = CommonGetMailCommand ()
@@ -836,7 +835,7 @@ Func CommonMailIt ($miattachtype, $miattachdata, $mierrdesc = "")
 		$mibody = $minormal & $miquad
 		If $mierrdesc <> "" Then $mibody &= "Problem Description: " & $mierrdesc & $midouble
 		$mibody    &= "Please add any additional notes below."
-		$miparms    = "to='"      & $myemail   & "',"
+		$miparms    = "to='"      & $diagemail   & "',"
 		$miparms   &= "subject='" & $misubject & "',"
 		$miparms   &= "body='"    & $mibody    & "',"
 		;If $miattachdata <> "" Then $miparms   &= _                 Awaiting Mozilla fix 9/10/19
@@ -890,7 +889,7 @@ Func CommonRunBat ($rbpath, $rbname, $rbvar = "", $rbshow = @SW_SHOW, $rbexit = 
 	If $rbvar <> "" Then _ArrayInsert ($rbarray, 2, $rbvar)
 	$rbtemp     = @TempDir & "\" & $rbname
 	BaseFuncArrayWrite ($rbtemp, $rbarray)
-	Run ($rbtemp, "", $rbshow)
+	Run ($rbtemp, @TempDir, $rbshow)
 	If $rbexit = "yes" Then Exit
 EndFunc
 
@@ -946,7 +945,7 @@ Func CommonSearchDrives ($sdsearch, $sdfound, ByRef $sdstring, $sdefifamily = "E
 			If CommonParms ($parmadvanced) Then	$sdstring &= $sddisk & "|"
 			ContinueLoop
 		EndIf
-		If $sdfamily <> "Windows" And $sdfamily <> $sdefifamily     Then ContinueLoop
+		If $sdfamily <> $winstring And $sdfamily <> $sdefifamily     Then ContinueLoop
 		If $sdfs <> "NTFS" And Not StringInStr ($sdfs, "FAT")       Then ContinueLoop
 		If $sdfound = "" And FileExists ($sddisk & "\" & $sdsearch) Then $sdfound = $sddisk
 		$sdstring &= $sddisk & "|"
@@ -1017,11 +1016,10 @@ EndFunc
 Func CommonCopyUserFiles ($uficonsonly = "")
 	If $usercopied = "" Then CommonCopyUserIcons ()
 	If $usercopied = "yes" Or $uficonsonly = "yes" Then Return
-	DirCreate ($themetempback)
-	FileCopy  ($userbackgrounds  & "\*.jpg", $themetempback & "\", 1)
-	FileCopy  ($themebackgrounds & "\*.jpg", $themetempback & "\", 1)
-	FileCopy  ($userclockfaces   & "\*.png", $themefaces    & "\", 1)
-	FileCopy  ($userfonts        & "\*.*",   $fontpath      & "\", 1)
+	DirCreate ($wallpapertempback)
+	FileCopy  ($userbackgrounds  & "\*.jpg",      $wallpapertempback & "\", 1)
+	FileCopy  ($wallpaperbackgrounds & "\*.jpg",  $wallpapertempback & "\", 1)
+	FileCopy  ($userclockfaces   & "\*.png",      $wallpaperfaces    & "\", 1)
 	$usercopied = "yes"
 EndFunc
 
@@ -1057,23 +1055,21 @@ Func CommonPIDGetWinHandle ($gwhpid, $gwhtimeout = 10)
 EndFunc
 
 Func CommonSetupCloseOut ()
-	CommonWriteLog    ("End Setup - " & TimeLine ("", "", "yes"), "", "", "")
-	BaseFuncArrayWrite   ($setuplogfile, $templogarray)
-	FileClose         ($temploghandle)
-	FileCopy          ($templogfile,  $setuplogfile, 1)
+	CommonWriteLog     ("End Setup - " & TimeLine ("", "", "yes"), "", "", "")
+	BaseFuncArrayWrite ($setuplogfile, $templogarray)
+	FileClose          ($temploghandle)
+	FileCopy           ($templogfile,  $setuplogfile, 1)
 	If $setupstatus = "complete" Then
-		FileCopy           ($setuplogfile,   $datapath & "\", 1)
+		FileCopy           ($setuplogfile,   $datapath & $setuplogstring, 1)
 		$costatshandle = FileOpen ($datapath & $statslogstring, $FO_OVERWRITE)
 		CommonStatsDownload ($costatshandle)
 		FileClose          ($costatshandle)
-		FileCopy           ($downloadjulian, $datapath & "\", 1)
 		FileCopy           ($windowstempgrub & $encryptstring, $storagepath & $encryptstring, 1)
 		$cotype = "Setup"
 		If CommonParms ($parmfromupdate)   Then $cotype = "Update"
 		SettingsPut    ($setstattype, $cotype)
 		CommonSaveListings ()
 	EndIf
-	FileDelete        ($downloadjulian)
 EndFunc
 
 Func CommonDonate ()
@@ -1209,8 +1205,10 @@ Func CommonGetHelpPath ()
 EndFunc
 
 Func CommonHelp ($bhtopic)
-	WinClose      ($helptitle)
-	WinWaitClose  ($helptitle, "", 10)
+	If $langselectedcode = "en" Then
+		WinClose      ($helptitle)
+		WinWaitClose  ($helptitle, "", 10)
+	EndIf
 	$bhstring     = $helppath
 	If $runtype = $parmsetup Then $bhstring = $setupmasterpath & "\winhelp"
 	$bhstring    &= "\usermanual\" & StringStripWS ($bhtopic, $STR_STRIPALL) & ".html"
@@ -1304,16 +1302,18 @@ Func CommonGetSetupPath ()
 EndFunc
 
 Func CommonCheckEmail (ByRef $ceaddress)
+	If $diagmailcount > 4 Then Return 1
+	$diagmailcount += 1
 	$ceaddress = StringStripWS ($ceaddress, $STR_STRIPALL)
 	$cepos     = StringInStr   ($ceaddress, "@")
     If $cepos < 2 Then Return
 	If CommonStringCount ($ceaddress, "@") > 1 Then Return
 	$cesite = StringTrimLeft ($ceaddress, $cepos)
-    TCPStartup  ()
+	 TCPStartup  ()
     $ceaddr = TCPNameToIP ($cesite)
 	TCPShutdown ()
-	If $ceaddr = "" Then Return
-	Return 1
+	If $ceaddr <> "" Then Return 1
+	Return
 EndFunc
 
 Func CommonStringCount ($scstring, $scsearch)
@@ -1375,28 +1375,34 @@ Func CommonGetGeo ($ggtimeout = 3, $ggcheckerror = "yes")
 	If $gglastjul  = $unknown Then $gglastjul = 0
 	If $geotimezone = $unknown Or $runtype <> "Grub2Win" Or Not StringInStr ($statusgeo, "Conn") _
 		Or $todayjul - $gglastjul > 30 Or CommonParms ($parmuninstall) Then
-		For $gginetread = 1 To 6
-			If $ggtimeout > 1 Then CommonFlashStart ("Checking Internet Connection - Takes Up To " & $ggtimeout & " Seconds", "", "", "", "keep")
+		For $gginetread = 1 To 5
+			If $ggtimeout > 1 And Not CommonParms ("Uninstall") Then _
+				CommonFlashStart ("Checking Internet Connection - Takes Up To " & $ggtimeout & " Seconds", "", "", "", "keep")
 			$ggtimeinit     = TimeTickInit      ()
-			$ggdata			= CommonInetRead      ($locationurl, "internet", $statusgeo, $ggtimeout)
+			$ggdata			= CommonInetRead    ($locationurl, "internet", $statusgeo, $ggtimeout)
 			$ggduration     = TimeFormatSeconds ($ggtimeinit)
 			$statusgeo     &= " " & $ggduration
 			If $ggcheckerror = "" Then ExitLoop
 			If StringInStr ($statusgeo, "Conn") Then ExitLoop
 			If Not StringInStr ($runtype, "Download") And Not StringInStr ($runtype, "Setup") And Not $geocountry = $unknown Then ExitLoop
-			$gglicstatus = SecureCheckLicensed ()
+			$gglicstatus    = SecureCheckLicensed ()
 			If $gglicstatus = $licensed Then ExitLoop
 			If $gglicstatus <> "" Then MsgBox ($mbontop, "", $gglicstatus, 5)
-			$ggtimeout  = 5 * $gginetread
 			If CommonParms ("Uninstall") Then Return
+			$ggtimeout      = 5 * $gginetread
+			If $ggtimeout   > 15 Then Sleep (5000)
 			$gginetmsg  = "Please Check Your Internet Connection" & @CR & "And Firewall Settings" & @CR & @CR & @CR
+			If $ggtimeout   > 15 Then
+				$gginetmsg &= "**  Note That Your Connection To Some Sites"     & @CR
+				$gginetmsg &= "**  May Be Slowed Or Blocked By Employers,"      & @CR
+				$gginetmsg &= "**  Public Providers, Schools, Governments Etc." & @CR & @CR & @CR
+				Sleep (5000)
+			EndIf
 			$gginetmsg &= "Status Code = " & $statusgeo & @CR & @CR & @CR & 'Click "Yes" To Retry '
 			If StringInStr ($statusgeo, "Timeout") Then $gginetmsg &= 'For ' & $ggtimeout & ' Seconds'
 			$gginetmsg &=  @CR & @CR & 'Click "No" To Cancel'
-			If $gginetread < 6 Then
-				$gginetrc = MsgBox ($mbwarnyesno, "Internet Connection Error     Retry Attempt " & $gginetread & " Of 3", $gginetmsg)
-				If $gginetrc = $IDYES Then ContinueLoop
-			EndIf
+			$gginetrc = MsgBox ($mbwarnyesno, "Internet Connection Error     Retry Attempt " & $gginetread & " Of 5", $gginetmsg)
+			If $gginetrc = $IDYES Then ContinueLoop
 			MsgBox ($mbwarnok, "", "Grub2Win Run Cancelled Due To Internet Errors" & @CR & "Retry Attempts = " & $gginetread - 1, 5)
 			BaseFuncCleanupTemp ("CommonGetGeo")
 		Next
@@ -1440,9 +1446,9 @@ Func CommonScaleIt ()
 	$siheight   = Int ($siwidth * 0.75)
 	$scalehsize = Int(((0.9 * $siwidth)  / 100) * 85)
 	$scalevsize = Int(((0.9 * $siheight) / 100) * 90)
-	If $scalehsize < 763 Or $scalevsize < 605 Or StringInStr ($CmdLineRaw, $parmlowresmode) Then
-		$scalehsize = 763
-		$scalevsize = 605
+	If $scalehsize < 850 Or $scalevsize < 650 Or StringInStr ($CmdLineRaw, $parmlowresmode) Then
+		$scalehsize = 850
+		$scalevsize = 650
 	EndIf
 	$scalepcthorz      = $scalehsize / 100
 	$scalepctvert      = $scalevsize / 100
@@ -1601,6 +1607,7 @@ Func CommonQuestion ($bqtype, $bqheader = "", $bqtext1 = "", $bqtext2 = "", $bqa
 EndFunc
 
 Func CommonGUIPause ($gpclosehandle, $gpokhandle = "")
+	If CommonParms ($parmquiet) Then Return $GUI_EVENT_CLOSE
 	Do
 		$gpstatus = GUIGetMsg ()
 	Until $gpstatus <> "" And ($gpstatus = $GUI_EVENT_CLOSE Or $gpstatus = $gpclosehandle Or $gpstatus = $gpokhandle)
@@ -1608,7 +1615,7 @@ Func CommonGUIPause ($gpclosehandle, $gpokhandle = "")
 EndFunc
 
 Func CommonPathToWin ($twinpath)
-	$twoutpath = StringReplace ($twinpath, "/",       "\")
+	$twoutpath = StringReplace ($twinpath,  "/",               "\")
 	$twoutpath = StringReplace ($twoutpath, " \grub2\",        " " & $masterpath & "\")
 	$twoutpath = StringReplace ($twoutpath, " ($root)\grub2\", " " & $masterpath & "\")
 	$twoutpath = StringReplace ($twoutpath, "$prefix",        $masterpath)
@@ -1803,8 +1810,8 @@ Func CommonParmSyntax ($psarray)
 EndFunc
 
 Func CommonCheckResolution ()
-	If @DesktopWidth < 800 Or @Desktopheight < 700 Then
-		$pamsg  = "The minimum recommended display size is 800 x 700"                         & @CR & @CR
+	If @DesktopWidth < 1024 Or @Desktopheight < 768 Then
+		$pamsg  = "The minimum recommended display size is 1024 x 768"                        & @CR & @CR
 		$pamsg &= "Your current display setting is " & @DesktopWidth & " x " & @DesktopHeight & @CR & @CR
 		$pamsg &= "Grub2Win screens may not display properly"                                 & @CR & @CR & @CR
 		$pamsg &= 'Click "OK" to continue anyway, or click "Cancel"'
@@ -1895,13 +1902,16 @@ Func CommonStatsBuild ($cstype = "Daily", $csupdatesettings = "yes", $csinetget 
 	            & "-" & $useridalpha & "-" & $cstesting & $csuserstatus & $cstype & $csrestflag & ".txt"
 	$statsdatafile  = $statsdatastring & $csstamp
 	$csmachguid     = "None"
+	$csmachvirt     = BaseFuncCheckVirtual ()
+	$cswallpaper    = BaseFuncCapIt (CommonWallpaperGetOption ("name"))
 	If $regmachguid <> "" Then $csmachguid = $regmachguid
 	$cshandle       = FileOpen ($statsdatafile, $FO_OVERWRITE )
 	FileWrite ($cshandle, @TAB & @TAB & @TAB & "New York Time  " & $nytimeus & @CR)
-	FileWrite ($cshandle, @CR & "System"              & @CR)
+	FileWrite ($cshandle, @CR & "System")
 	FileWrite ($cshandle, @CR & "    WindowsVersion"  & @TAB & $bootos)
 	FileWrite ($cshandle, @CR & "    WindowsBuild"    & @TAB & @OSBuild)
 	FileWrite ($cshandle, @CR & "    FirmwareMode"    & @TAB & $firmwaremode)
+	If $csmachvirt <> "" Then FileWrite ($cshandle, "     ** Running Under " & $csmachvirt & " **")
 	FileWrite ($cshandle, @CR & "    CPUBits"    & @TAB & @TAB & $procbits)
 	FileWrite ($cshandle, @CR & "    OSBits"     & @TAB & @TAB & $osbits)
 	FileWrite ($cshandle, @CR & "    Memory"     & @TAB & @TAB & $sysmemorygb)
@@ -1909,7 +1919,8 @@ Func CommonStatsBuild ($cstype = "Daily", $csupdatesettings = "yes", $csinetget 
 	FileWrite ($cshandle, @CR & "    CPU" & @TAB & @TAB & @TAB & $regcpuname)
 	FileWrite ($cshandle, @CR & "    GUID"       & @TAB & @TAB & $csmachguid)
 	FileWrite ($cshandle, @CR & "    Parms"      & @TAB & @TAB & $csparmprint)
-	FileWrite ($cshandle, @CR & @CR & @CR  & "Grub" & @CR)
+	If $cswallpaper <> "" Then FileWrite ($cshandle, @CR & "    Wallpaper"  & @TAB & @TAB & $cswallpaper)
+	FileWrite ($cshandle, @CR & @CR & @CR  & "Grub")
 	;MsgBox ($mbontop, "Base B", "Curr " & $csrelcurr & @CR & "New " & $basrelcurr & @CR & @CR & $basepath & "\" & $exestring)
 	$csrelprevout  = ""
 	$csrelshowtime = ""
@@ -1941,9 +1952,9 @@ Func CommonStatsBuild ($cstype = "Daily", $csupdatesettings = "yes", $csinetget 
 	EndIf
 	If $uninstinfo     <> "" Then FileWrite ($cshandle, @CR & @CR & $uninstinfo     & @CR)
 	If $securediaginfo <> "" Then FileWrite ($cshandle, @CR & @CR & $installmessage & @CR & @CR & $securediaginfo & @CR)
-	FileWrite ($cshandle, @CR & @CR & "Geo" & @CR)
+	FileWrite ($cshandle, @CR & @CR & "Geo")
 	$cscity = $geocity
-	$csloc  = $cscity & "," & @TAB & $georegion & "," & @TAB & $geocountry
+	$csloc  = $cscity & "," & @TAB & $georegion & "," & @TAB & $georawcountry
 	FileWrite ($cshandle, @CR & "    Location" & @TAB & @TAB & $csloc & @TAB  & @CR)
 	If $cscity = $unknown Or $cscity = "" Then $cscity = "Local"
 	$cstime = "    " & StringStripWS ($cscity, 7) & " Time"
@@ -2045,7 +2056,7 @@ Func CommonCheckRestrict ()
 		$licmsgarray   [6]  = ""
 		CommonLicWarn  (20)
 		If StringInStr ($runtype, "Download") Then _
-			BaseFuncCleanupTemp ("CommonCheckRestrict", "Exit", "setupfiles", @ScriptDir)
+			BaseFuncCleanupTemp  ("CommonCheckRestrict", "Exit", "setupfiles", @ScriptDir)
 	EndIf
 	Exit
 EndFunc
@@ -2131,18 +2142,14 @@ Func CommonGetAllInfo ($aipath = $masterpath & "\" & $exestring)
 EndFunc
 
 Func CommonCheckDescription ($cdtext)
-	$cdstrip = StringStripCR ($cdtext)
-	$cdvowel = StringStripWS ($cdstrip, $STR_STRIPALL)
-	If StringLen ($cdstrip) > 10 And Ubound (StringRegExp ($cdvowel, $vowelchar, 3)) > 1 _
-		And CommonStringCount ($cdstrip, " ") > 2 Then Return ""
-	Return "Enter a description of your problem" & @CR & "Please provide as much detail as possible"
-EndFunc
-
-Func CommonCheckMode ()
-	If @OSBuild > 20000 And $firmwaremode <> "EFI" Then
-		$ccunsuppmsg  = "Windows 11 Must Run In EFI Mode"    & @CR & @CR & "Your Machine Is Improperly Configured For BIOS Firmware" & @CR & @CR
-		$ccunsuppmsg &= "Grub2Win Will Not Run In This Mode" & @CR & @CR & "Run Cancelled"
-		MsgBox ($mbwarnok, "** Microsoft Does Not Support Windows 11 In BIOS Mode **", $ccunsuppmsg, 60)
-		BaseFuncCleanupTemp ("CommonCheckMode")
-	EndIf
+	$cdstrip  = StringStripCR     ($cdtext)
+	$cdvowel  = StringStripWS     ($cdstrip, $STR_STRIPALL)
+	$cdwords  = CommonStringCount ($cdstrip, " ")
+	$cdlength = StringLen ($cdstrip)
+	$cdreal   = Ubound (StringRegExp ($cdvowel, $vowelchar, 3))
+	$cdreturn = "Enter a description of your problem" & @CR & "Please provide as much detail as possible"
+	If $cdlength > 10 And $cdreal > 2 _
+		And $cdwords > 3 Then Return ""
+	If $cdwords > 0 And $cdreal < 3 Then $cdreturn &= @CR & @CR & "** Add Real Words To Your Description **"
+	Return $cdreturn
 EndFunc

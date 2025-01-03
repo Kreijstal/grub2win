@@ -107,7 +107,6 @@ Func SelectionRefresh()
 	SelectionSequenceUpdate ()
 	$selectionentrycount = UBound ($selectionarray)
 	$selectionlimit      = $selectionentrycount - 1
-	$edithotkeywork      = $hotkeystring
 	$cloverfound         = ""
 	Local $srmovehandle, $srmoveupdown
 	If $handleselectiongui = "" Then SelectionSetupParent ()
@@ -180,11 +179,14 @@ Func SelectionRefresh()
 		If $selectionarray[$srlinecount][$sHotKey] <> "no" Then
 			$srhklen = 7.4 + (StringLen ($selectionarray[$srlinecount][$sHotKey]) * 0.75)
 			CommonScaleCreate("Label", "  Hotkey = " & $selectionarray[$srlinecount][$sHotKey], 78, $srvert - 4, $srhklen, 3)
-			$edithotkeywork = StringReplace ($edithotkeywork, "|" & $selectionarray[$srlinecount][$sHotKey] & "|", "|")
 		EndIf
 		$srhandlenumber = CommonScaleCreate("Label", $srlinecount, 92.8 - (Stringlen ($srlinecount) * .4), $srvert + 1.6, Stringlen ($srlinecount), 2.8)
 		GUICtrlSetColor ($srhandlenumber, $myred)
-		CommonScaleCreate("Label", "Type = "   & $selectionarray[$srlinecount][$sOSType], 18, $srvert + 0.0, 15, 5)
+		CommonScaleCreate("Label", "Type = "    & $selectionarray[$srlinecount][$sOSType], 18, $srvert + 0.0, 15, 3)
+		If  $selectionarray [$srlinecount] [$simported] <> "" Then
+			$srimporthandle = CommonScaleCreate("Label", "** Imported **", 32, $srvert + 2.8, 25, 2.5, $SS_Center)
+			GUICtrlSetBkColor ($srimporthandle, $mymedblue)
+		EndIf
 		$srdiskr = "Root " & $modehardaddress & " =  " & $selectionarray[$srlinecount][$sRootDisk]
 		$srdiskb = "Boot " & $modehardaddress & " =  " & $selectionarray[$srlinecount][$sBootDisk]
 		If $selectionarray [$srlinecount] [$sFamily] <> "standfunc" Or $selectionarray [$srlinecount] [$sOSType] = "clover" Then _
@@ -198,7 +200,8 @@ Func SelectionRefresh()
 			GUICtrlSetColor   ($handleselectionup [$srlinecount], $mymedgray)                ; Move Up
 			$srhandlelocup [$srlinecount] = CommonScaleCreate("Label", "", 97.6, $srvert - 0.5, 0, 0)
 			GUICtrlSetState ($srhandlelocup [$srlinecount], $guihideit)
-			If $selectionlimit > 0 Then $handleselectiondel[$srlinecount] = CommonScaleCreate ("Button", "Delete", 2, $srvert + 0.8, 6, 3.3)
+			If $selectionlimit > 0 And $selectionarray [$srlinecount] [$sOSType] <> $winstring Then _
+				$handleselectiondel[$srlinecount] = CommonScaleCreate ("Button", "Delete", 2, $srvert + 0.8, 6, 3.3)
 			GUICtrlSetBkColor($handleselectiondel[$srlinecount], $myblue)
 			$srmovelimit = $srlinecount + 1
 			If $srmovelimit > $selectionlimit Then $srmovelimit = $srlinecount
@@ -246,14 +249,14 @@ Func SelectionRefresh()
 			$srdiskr = $modeandroidfile & " = " & $selectionarray[$srlinecount][$sRootSearchArg]
 		If $selectionarray [$srlinecount] [$sLoadBy] = $modephoenixfile Then _
 			$srdiskr = $modephoenixfile & " = " & $selectionarray[$srlinecount][$sRootSearchArg]
-		If $selectionarray[$srlinecount][$sOSType]   = "windows"  Then
+		If $selectionarray[$srlinecount][$sOSType]   = $winstring  Then
 			$windowstypecount += 1
-			If $firmwaremode = "EFI" Then $selectionarray [$srlinecount] [$sLoadBy] = $modewinauto
+			$selectionarray [$srlinecount] [$sLoadBy] = $modewinauto
 		EndIf
 		If $selectionarray[$srlinecount][$sLoadBy] = $modewinauto Then $srdiskr = "Partition Boot Address = Automatic"
 		If $selectionarray[$srlinecount][$sFamily] = "standfunc"  Then $srdiskr = ""
-		If $selectionarray[$srlinecount][$sLoadBy] = $modewinauto And $firmwaremode = "EFI" Then
-			SelectionWinEFI ($srvert)
+		If $selectionarray[$srlinecount][$sLoadBy] = $modewinauto Then
+			SelectionWin ($srvert)
 		ElseIf $selectionarray[$srlinecount][$sLoadBy] = $modecustom And $selectionarray[$srlinecount][$sAutoUser] = "auto" Then
 			$srcust = CommonScaleCreate("Label", "**  Custom Configuration **", 32, $srvert, 25, 2.8, $SS_Center)
 		    GUICtrlSetBkColor ($srcust, $mymedblue)
@@ -296,9 +299,6 @@ Func SelectionRefresh()
 EndFunc
 
 Func SelectionDelete($mdsub)
-	If $selectionarray [$mdsub] [$sOSType] = "windows" Then
-		If Not CommonQuestion ($mbwarnyesno, "*** Warning ***", "This will delete your Windows boot entry!", "Are you absolutely sure?") Then Return
-	EndIf
 	If Not CommonQuestion ($mbinfookcan, "", 'Deleting menu entry number   ' & $mdsub & '   "' &      _
 		$selectionarray [$mdsub] [$sEntryTitle] & '"' , 'Click OK or Cancel') Then Return
 	If $selectionarray [$mdsub] [$sDefaultOS] = "DefaultOS" Then $selectionarray[0][$sDefaultOS] = "DefaultOS"
@@ -347,16 +347,16 @@ Func SelectionLastBooted ()
 	;MsgBox ($mbontop, "Last Booted", $defaultlastbooted)
 EndFunc
 
-Func SelectionWinEFI ($mwvertstart)
+Func SelectionWin ($mwvertstart)
 	_ArraySort ($bcdwinorder, 0, 0, 0, $bSortSeq)
 	$mwlimit = Ubound ($bcdwinorder) - 1
 	$mwvert  = ($mwvertstart + 2) - ($mwlimit * 2)
 	For $mwsub = 0 To $mwlimit
 		$mwline  = "     Instance " & $mwsub + 1 & "     Drive - " & $bcdwinorder [$mwsub] [$bDrive]
-		$mwline &= "       "           & $bcdwinorder [$mwsub] [$bItemTitle]
+		$mwline &= "       "        & $bcdwinorder [$mwsub] [$bItemTitle]
 		CommonScaleCreate("Label", $mwline, 31, $mwvert + 1, 40, 3)
 		$mwvert += 2.5
 		If $mwvert - $mwvertstart > 6 Then ExitLoop
 	Next
-	;_ArrayDisplay ($bcdwinorder, "Win Order   Timeout = " & $bcdprevtime & "  " & $mwvert)
+	;_ArrayDisplay ($bcdwinorder, "Win Order   Timeout = " & "  " & $mwvert)
 EndFunc

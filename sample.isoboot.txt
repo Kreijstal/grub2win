@@ -4,17 +4,22 @@
 #
 #            See the Grub2Win help file advanced topics section for more information
 #
-#            Note: There are many many ISO files available. They are all different.
-#                  You must examine your particular ISO file with a utility like 7-Zip to
-#                  obtain the proper kernel and initrd paths.
-#                  You can then set the kernelpath and initrdpath variables below.
-#                  The kernel and initrd files will not be found unless the correct paths are set.         
+#            Notes: There are many many ISO files available. They are all different.
+#                   You must examine your particular ISO file with a utility like 7-Zip to
+#                   obtain the proper kernel and initrd paths.
+#                   You can then set the kernelpath and initrdpath variables below.
+#                   The kernel and initrd files will not be found unless the correct paths are set.  
+#
+#                   Literal strings in the setparams command must be surrounded by single quotes '       
+#
 #
      clear
-     set isopath='/** your iso file path **'             # Example '/my.linux.iso'
-     set kernelpath='/** kernel path **'                 # Example '/vmlinuz'
-     set initrdpath='/** initrd path **'                 # Example '/initrd.img'
-     set bootparms='** your linux bootparms **'          # Example 'boot=/ iso-scan/filename='$isopath' noprompt noeject ---'
-#
-     g2wisoboot                                          # Run the g2wisoboot function
+     set isopath=/** your iso file path **                # Example  set isopath=/my.linux.iso
+     set kernelpath=/** kernel path **                    # Example  set kernelpath=/vmlinuz
+     set initrdpath=/** initrd path **                    # Example  set initrdpath=/initrd.img
+
+     setparams      '** your linux bootparms **'          # Example  setparams      'boot=/ iso-scan/filename='     $isopath      ' noprompt noeject ---'
+
+
+     g2wisoboot "$1""$2""$3""$4""$5""$6""$7""$8""$9""$10"    #  Run the g2wisoboot function ** Do not touch this line!
 #

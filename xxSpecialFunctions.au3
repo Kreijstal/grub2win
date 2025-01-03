@@ -2,32 +2,23 @@
 #include <g2basecode.au3>
 
 Func SpecFuncGetResolutions ()
-	Dim $grmode, $grreturn
-	$grstring  = "800x600|1024x768"
-    ; Get valid resolutions. Code for detecting list of reported valid resolutions is by Rasim
-    ; www.autoitscript.com/forum/topic/70679-optain-supported-resolutions-via-enumdisplaysettingsex-call
-    $grmode = DllStructCreate ("char dmDeviceName[32];ushort dmSpecVersion;ushort dmDriverVersion;short dmSize;" & _
-                               "ushort dmDriverExtra;dword dmFields;short dmOrientation;short dmPaperSize;short dmPaperLength;" & _
-                               "short dmPaperWidth;short dmScale;short dmCopies;short dmDefaultSource;short dmPrintQuality;" & _
-                               "short dmColor;short dmDuplex;short dmYResolution;short dmTTOption;short dmCollate;" & _
-                               "byte dmFormName[32];dword dmBitsPerPel;int dmPelsWidth;dword dmPelsHeight;" & _
-                               "dword dmDisplayFlags;dword dmDisplayFrequency")
-    DllStructSetData ($grmode, "dmSize", DllStructGetSize($grmode))
-    For $grenum = 0 To 2000
-        $grreturn = DllCall ("user32.dll", "int", "EnumDisplaySettingsEx", "ptr", 0, "dword", $grenum, _
-                          "ptr", DllStructGetPtr ($grmode), "dword", 0)
-        If $grreturn [0] = 0 Then ExitLoop
-		$grwidth   = DllStructGetData ($grmode, "dmPelsWidth")          ; width
-        $grheight  = DllStructGetData ($grmode, "dmPelsHeight")         ; height
-        $grrefresh = DllStructGetData ($grmode, "dmDisplayFrequency")   ; refresh rate
-        $grpixbits = DllStructGetData ($grmode, "dmBitsPerPel")         ; bits per pixel
-		If $grwidth   < 1025                       Then ContinueLoop
-        If $grpixbits <   32                       Then ContinueLoop
-        If $grrefresh >   75                       Then ContinueLoop
-		If Mod ($grwidth, 2) Or Mod ($grheight, 2) Then ContinueLoop
-		$grnewres  = $grwidth & "x" & $grheight
-		If StringInStr ($grstring, $grnewres)      Then ContinueLoop
-		$grstring &= "|" & $grnewres
+	$grstring = "1024x768"
+	Dim $grsort [0] [2]
+	Local $strComputer = "."
+	Local $objWMIService = ObjGet("winmgmts:" & "{impersonationLevel=impersonate}!\\" & $strComputer & "\root\cimv2")
+	Local $colItems = $objWMIService.ExecQuery("Select * from CIM_VideoControllerResolution")
+	For $objItem in $colItems
+		$gritem = $objItem.SettingID
+		$grarray = StringSplit ($gritem, "x")
+		If @error Or Ubound ($grarray) < 3 Then ContinueLoop
+		If $grarray [1] < 1024 Then ContinueLoop
+		$grcomp    = StringStripWS ($grarray [1], 8) & "x" & StringFormat ("%04i", $grarray [2]) & "|" & _
+		StringStripWS ($grarray [1], 8) & "x" & StringStripWS ($grarray [2], 8)
+		_ArrayAdd    ($grsort, $grcomp)
+	Next
+	_ArraySort    ($grsort)
+	For $grsub =0 To Ubound ($grsort) - 1
+		If Not StringInStr ($grstring, $grsort [$grsub] [1]) Then $grstring &= "|" & $grsort [$grsub] [1]
 	Next
 	Return $grstring
 EndFunc

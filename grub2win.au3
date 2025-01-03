@@ -14,12 +14,12 @@
    Creates and maintains the \EFI\grub2win directory in your EFI partition
 
    Grub2Win is written in AutoIt.
-   If you wish to modify and recompile grub2win.exe,
+   If you wish to modify and compile grub2win.exe,
    you will need to download and install the AutoIt software package.
    AutoIt is available free at http://www.autoitscript.com/
 
 
-         Grub2Win   Copyright (C) 2010 - 2023, Dave Pickens
+         Grub2Win   Copyright (C) 2010 - 2024, Dave Pickens
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -66,20 +66,14 @@ EndIf
 
 ProcessCommon ()
 
-If $bootos = $xpstring Then
-	UpdateXP ()
-Else
-	UpdateBCD ()
-EndIf
+UpdateBoot    ()
 
-CommonEndIt ("Success")
+CommonEndIt   ("Success")
 
 ; ************  End of main routine ************
 
 Func InitializeXP()
-	XPSetup ()
 	CommonInitialize ()
-	XPGetPrevious    ()
 EndFunc
 
 Func InitializeBCD()
@@ -90,6 +84,9 @@ Func InitializeBCD()
 		$bcdwindisplayorig = BCDOrderSort  ($bcdwinorder, "win")
 		$typestring        = StringReplace ($typestring,  "invaders|", "")
 	EndIf
+	$newwindisplayboot = $prevwindisplayboot
+	$winmenustring     = EditPanelWinMenuStyle ()
+	;MsgBox ($mbontop, "Boot", $prevwindisplayboot)
 EndFunc
 
 Func ProcessCommon      ()
@@ -97,6 +94,7 @@ Func ProcessCommon      ()
 	CommonCopyUserFiles ()
 	GetPrevConfig       ()
 	CheckEnvironment    ()
+	$timeoutwinprev      = $timeoutwin
 	If CommonParms ($rebootstring)  Then GenRebootBuild ($parmvalue)
 	If CommonParms ($parmuninstall) Then UninstallIt ()
 	$pcrc = MainRunGUI ()
@@ -106,23 +104,14 @@ Func ProcessCommon      ()
 	;BackupMake         ()
 	$pcrc = GenConfig  ()
 	If $pcrc <> 0 Then CommonEndit ("Failed")
-	ThemeUpdateFiles   ()
 EndFunc
 
-Func UpdateXP ()
-	$uxrc = XPUpdate ($timeoutwin, "no")
-	If $uxrc <> 0 Then CommonEndIt ("Failed")
-EndFunc
-
-Func UpdateBCD ()
-	If $firmwaremode = "EFI" Then
-		BCDSetWinOrderEFI   ()
-		$ubgrubmessage = BCDGetUpdateMessage ($bcdorderarray, "yes")
-		If $ubgrubmessage <> "" Then CommonWriteLog ("          " & $ubgrubmessage)
-		BCDSetWinTimeout ($timeoutwin)
-	Else
-		BCDSetupBIOS ($timeoutwin, "no")
-	EndIf
+Func UpdateBoot ()
+	If $bootos = $xpstring Then Return
+	BCDSetWinOrder   ()
+	$ubgrubmessage = BCDGetUpdateMessage ($bcdorderarray, "yes")
+	If $ubgrubmessage <> ""           Then CommonWriteLog ("          " & $ubgrubmessage)
+	If $timeoutwin <> $timeoutwinprev Then CommonBCDRun   ("/timeout "  & $timeoutwin, "settimeout")
 EndFunc
 
 Func CheckEnvironment ()
@@ -130,8 +119,8 @@ Func CheckEnvironment ()
 	$celevel        = SettingsGet ($setefideployed)
 	CommonSetupSysLines    ($celevel)
 	CommonWriteLog ("    " & $syslineos)
-	If $prevgrubinfo  <> "" Then CommonWriteLog ("    Running " & $prevgrubinfo)
-	If $syslinesecure <> "" Then CommonWriteLog ("    "         & $syslinesecure)
+	If $prevgrubinfo  <> "" Then CommonWriteLog   ("    Running " & $prevgrubinfo)
+	If $syslinesecure <> "" Then CommonWriteLog   ("    "         & $syslinesecure)
 	CommonWriteLog ("    " & $syslinepath, Default, "")
 	CommonWriteLog ("    " & $langline1, Default, "")
 	If $langline2 <> "" Then CommonWriteLog ("    " & $langline2, Default, "")

@@ -215,7 +215,7 @@ Func PartGetMisc ($gmloc, $gmdisksub, $gmtypeguid = "")
 			PartProcessWindows ($gmloc, $gmpartnumber, $gmlbanumber)
 		Case StringInStr ($gmtypeguid,"-11aa-aa11-")
 			 $partitionarray [$gmloc] [$pPartFamily] = "Apple"
-		Case $gmtypeguid = $dynmetaguid
+		Case $gmfamily = "Dynamic"
 			 PartUnsupported ($partitionarray [$gmloc] [$pDisknumber], "DYN", "Dynamic")
 		EndSelect
 	For $gmsub = 0 To Ubound ($partdiskletterarray) - 1
@@ -243,7 +243,7 @@ Func PartUnsupported ($pudisksub, $pustyle,$pumsg)
 	$partitionarray [$pudisksub] [$pDriveStyle] = "*" & $pustyle & "*"
 	$puerrormsg1   = "****  Disk Drive " & $partitionarray [$pudisksub] [$pDiskNumber] & " is a " & $pumsg & " Disk" & @CR
 	$puerrormsg2   = "****  " & $pumsg & " Disks are not supported by Grub2Win"                                      & @CR
-	CommonWriteLog  ($puerrormsg1 & $puerrormsg2)
+	CommonWriteLog ($puerrormsg1 & $puerrormsg2)
 EndFunc
 
 Func PartEFIFlash ($efsub)
@@ -283,7 +283,7 @@ Func PartProcessWindows ($pwloc, $pwpartnumber, $pwlbanumber)
 		EndSelect
 	EndIf
 	If $partdisknumber = $winbootdisk And $pwpartnumber = $winbootpart Then _
-		$partitionarray [$pwloc] [$pPartType] = "** Windows Boot **"
+		$partitionarray [$pwloc] [$pPartType] = $typewinboot
 	PartHexDisplay ($pwsector, "disk-" & $partdisknumber & " part-" & $pwpartnumber & "  windata")
 EndFunc
 
@@ -312,7 +312,11 @@ Func PartProcessLinux ($plloc, $plpartnumber, $pllbanumber)
 		$plbtrfsid     = PartGetHexFields ($plsectorbtrfs, Dec ("40"), 7, "char")   ; Check for btrfs
 		If $plbtrfsid  = "_BHRfS_" Then
 			$partitionarray [$plloc] [$pPartUUID]       = PartFormatGUID (PartGetHexFields ($plsectorbtrfs, Dec ("20"),   16, "raw"))
-			$partitionarray [$plloc] [$pPartLabel]      = StringStripWS  (PartGetHexFields ($plsectorbtrfs, Dec ("012b"), 16, "char"), 7)
+			$pllabel     = PartGetHexFields ($plsectorbtrfs, Dec ("012b"), 30, "char")
+			$pllabend    = StringInStr ($pllabel, Chr (0))
+			If $pllabend > 17 Then $pllabend = 17
+			If $pllabend > 0  Then $pllabel = StringLeft ($pllabel, $pllabend - 1)
+			$partitionarray [$plloc] [$pPartLabel]      = StringStripWS  ($pllabel, 7)
 			$partitionarray [$plloc] [$pPartFileSystem] = "BTRFS"
 			$partbytestot   = (PartGetHexFields ($plsectorbtrfs, Dec ("70"), 8, "littleendian"))
 			$partbytesused  = (PartGetHexFields ($plsectorbtrfs, Dec ("78"), 8, "littleendian"))
@@ -401,15 +405,29 @@ Func PartSwapEndian ($sehex)
 	Return StringMid (Binary (Dec ($sehex, 2)), 3, StringLen ($sehex))
 EndFunc
 
+Func PartGPTCodes ($gcsearch)
+	$gcdesc   = ""
+	$gcreturn = "Unknown"
+	If Not IsArray ($partgptcodes) Then _
+		$partgptcodes = BaseFuncArrayRead ($sourcepath & "\xxgptcodes.txt", "PartGPTCodes", "", "no", 3)
+	;_ArrayDisplay ($partgptcodes, "GPTCodes")
+	$gcloc = _ArraySearch ($partgptcodes, $gcsearch)
+	If Not @error Then
+		$gcreturn = "Unsupported"
+		$gcdesc   = @CR & "       **  " & $partgptcodes [$gcloc] [1] & "   " & $partgptcodes [$gcloc] [2]
+	EndIf
+	Return "**  " & $gcreturn & " Partition Type - Code " & $gcsearch & $gcdesc
+EndFunc
+
 Func PartGetFamily ($gfsearchcol, $gfcodein, $gfpartloc, $gfextended = "")
 	$gfcode = $gfcodein
 	If $gfcode = "0C" Or $gfcode = "0B" Or $gfcode = "0E" Or $gfcode = "04" Or $gfcode = "06" Then $gfcode = "07"
 	$gfloc = _ArraySearch ($parttypearray, $gfcode, 0, 0, 0, 0, 0, $gfsearchcol)
 	If @error Then
 		$gfloc = 0
-		$partitionarray [$gfpartloc] [$pPartUUID]   = "**  Unknown Partition Type - Code " & $gfcodein & " **"
+		$partitionarray [$gfpartloc] [$pPartUUID] = PartGPTCodes ($gfcode)
 		If StringInStr ($gfcodein, "-11aa-aa11-") Then $gfloc = 1      ; Apple Misc
-   EndIf
+    EndIf
 	$partitionarray [$gfpartloc] [$pPartType]       = $gfextended & $parttypearray [$gfloc] [$tDesc]
 	$partitionarray [$gfpartloc] [$pPartFamily]     = $parttypearray               [$gfloc] [$tFamily]
 	$gffamily                                       = $parttypearray               [$gfloc] [$tFamily]

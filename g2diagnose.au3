@@ -2,35 +2,50 @@
 #include-once
 #include  <g2common.au3>
 
-Func DiagnoseGUI ($dglocalfile = "")
+If StringInStr (@ScriptName, "g2diagnose") Then DiagnoseGUI ()
+
+Func DiagnoseGUI ($dgtype = "Diagnostics", $dgdesc = "", $dgoutfile = "")
+	$diagrun     = "yes"
 	$dgpathguide = "C:\"
+	If DiagVacation ()   = $IDNO Then Return
 	Global $diagnosename = $useridalpha
 	Global $diagnosemail = RegEnumKey ($regkeyemail, 1)
 	Global $diagnoselang
-	Global $diagnosedesc
-	Global $diagnoseguihandle  = CommonScaleCreate ("GUI", "** Diagnostics **", - 1, - 1,  60, 70,   $WS_EX_STATICEDGE, -1, $handlemaingui)
-	Global $diagnosenamehandle = CommonScaleCreate ("Input",  $diagnosename,      2,   3,  20,  3)
-	CommonScaleCreate ("Label", "Enter a name to identify your diagnostic file", 23.2, 3,  55,  3)
-	Global $diagnosemailhandle = CommonScaleCreate ("Input",  $diagnosemail,      2,  10,  35,  3)
-	CommonScaleCreate ("Label", "Enter your E-Mail address" & @CR & "for a response", 38.2, 9, 21, 6)
-	Global $diagnoselanghandle = CommonScaleCreate ("Combo",  "",                 2,  15,  35,  3)
-	CommonScaleCreate ("Label", "Set your preferred language",                 38.2, 15.4, 21, 6)
+	Global $diagnosedesc = $dgdesc
+	Global $diagnoseguihandle  = CommonScaleCreate ("GUI", "** " & $dgtype & " **", - 1, - 1,  60, 95,   $WS_EX_STATICEDGE, -1, $handlemaingui)
+	GUISetBkColor ($myblue, $diagnoseguihandle)
+	Global $diagnosehelphandle = CommonScaleCreate ("Button", "Help",            52,  1.2,  6,  3.5)
+	Global $diagnosenamehandle = CommonScaleCreate ("Input",  $diagnosename,      2,   6,  20,  3)
+	CommonScaleCreate ("Label", "Enter a name to identify your diagnostic file", 23.2, 6,  55,  3)
+	Global $diagnosemailhandle = CommonScaleCreate ("Input",  $diagnosemail,      2,  13,  35,  3)
+	CommonScaleCreate ("Label", "Enter your E-Mail address" & @CR & "for a response", 38.2, 12, 21, 6)
+	Global $diagnoselanghandle = CommonScaleCreate ("Combo",  "",                 2,  20,  35,  3)
+	CommonScaleCreate ("Label", "Set your preferred language",                 38.2, 20.4, 21,  6)
     $dglanglist = BaseFuncSingleRead ($sourcepath & "\xxdiaglang.txt")
     $dglanglist = StringReplace ($dglanglist, "|" & $languserdesc, "")
 	GUICtrlSetData    ($diagnoselanghandle, "|" & $languserdesc & $dglanglist, $languserdesc)
-	CommonScaleCreate ("Label", "Please describe the problem",                    2,  22,  55,  3,   $SS_CENTER)
-	Global $diagnosedeschandle = CommonScaleCreate ("Input",  $diagnosedesc,      2,  25,  56, 12,   $ES_MULTILINE + $ES_WANTRETURN)
+	$dgprompt  = "Provide a detailed description of the problem."           & @CR
+	$dgprompt &= "Please consider these items for the problem description:" & @CR & @CR
+	$dgprompt &= "What is the error message you see?"                       & @CR & @CR
+	$dgprompt &= "Did you get a black screen?"                              & @CR & @CR
+	$dgprompt &= "Did your system hang?"                                    & @CR & @CR
+	                             CommonScaleCreate ("Label", $dgprompt,           2,  27,  55, 22,   $SS_CENTER)
+	Global $diagnosedeschandle = CommonScaleCreate ("Input", $diagnosedesc,       2,  47,  56, 14,   $ES_MULTILINE + $ES_WANTRETURN)
 	ControlFocus ($diagnoseguihandle, "", $diagnosedeschandle)
-	Global $diagnosemischandle = CommonScaleCreate ("Button", "",                 2,  40,  12, 11,   $BS_MULTILINE)
-	Global $diagnoselisthandle = CommonScaleCreate ("List",   "",                16, 42.1, 42, 11.6, $WS_VSCROLL, 0)
-	Global $diagnosecanchandle = CommonScaleCreate ("Button", "Cancel",           4,  58,   8,  3)
-	Global $diagnosetexthandle = CommonScaleCreate ("Label",  "",                13,  58,  34,  6,   $SS_CENTER)
-	Global $diagnoseokhandle   = CommonScaleCreate ("Button", "OK",              48,  58,   8,  3)
+	Global $diagnosemischandle = CommonScaleCreate ("Button", "",                 2,  65,  12, 11,   $BS_MULTILINE)
+	Global $diagnoselisthandle = CommonScaleCreate ("List",   "",                16,  65,  42, 11.6, $WS_VSCROLL, 0)
+	Global $diagnosecanchandle = CommonScaleCreate ("Button", "Cancel",           4,  83,   8,  3)
+	Global $diagnosetexthandle = CommonScaleCreate ("Label",  "",                13,  79,  34, 10,   $SS_CENTER)
+	Global $diagnoseokhandle   = CommonScaleCreate ("Button", "OK",              48,  84,   8,  3)
+	GUICtrlSetBkColor ($diagnosehelphandle, $mymedblue)
 	Dim    $diagnosemiscarray  [0]
 	DiagnoseRefresh ("")
 	While 1
 		$dgstatus = GUIGetMsg ()
 		Select
+			Case $dgstatus  = $diagnosehelphandle
+				CommonHelp  ("Diagnostics")
+				ContinueLoop
 			Case $dgstatus = $diagnoseokhandle
 				$dgcolor = DiagnoseRefresh ()
 				If $dgcolor <> $myred Then ExitLoop
@@ -52,25 +67,27 @@ Func DiagnoseGUI ($dglocalfile = "")
 	Wend
 	BaseFuncGUIDelete ($handlemaingui)
 	BaseFuncGUIDelete ($diagnoseguihandle)
-	CommonFlashStart  ("Creating Diagnostics Data", "This May Take Up To 60 Seconds", 750, "Diagnostics")
+	CommonFlashStart  ("Creating Diagnostics Data", "This May Take A Minute Or Two", 750, "Diagnostics")
 	UtilCreateSysInfo ()
    	CommonDatabase    ()
 	PartBuildDatabase ("yes")
+	DiagDiskPart      ()
 	UtilScanDisks     ()
 	$diagnosedesc     = CommonFormatComment ($diagnosedesc, @TAB & @TAB & @TAB & @TAB)
-	DiagnoseRun       ("OnRequest", BaseFuncRemoveCharSpec ($diagnosename), $diagnosemail, @TAB & $diagnosedesc, $dglocalfile)
+	DiagnoseRun       ("OnRequest", BaseFuncRemoveCharSpec ($diagnosename), $diagnosemail, @TAB & $diagnosedesc, $dgoutfile)
 	Return 1
 EndFunc
 
 Func DiagnoseRefresh ($drcheckerror = "yes")
-	$drdiagcolor     = $mylightgray
-	$drfocus         = $diagnoseokhandle
+	$drdiagcolor     = $myblue
+	$drfocus         = $diagnosedeschandle
 	$drmailok        = ""
 	$drdescok        = ""
 	$drlangok        = ""
-	$droktext        = "Click OK when you are done"
-	$drmiscbutton    = @CR & "Attach" & @CR & "Files"
-	$drmisclist      = "|| Attach files and screenshots that show any errors.| You can take screenshot photos with your phone."
+	$droktext        = @CR & @CR & "Click OK when you are done"
+	$drmiscbutton    = @CR &       "Attach" & @CR & "Files"
+	$drmisclist      = "||                         ** Very Important ** | " & _
+		"Attach screenshots and files that show any errors.| You can take screenshot photos with your phone."
 	If Ubound ($diagnosemiscarray) > 0 Then
 		$drmiscbutton  = @CR & "Attach More" & @CR & "Files"
 		GUICtrlSetData ($diagnoselisthandle, "|")
@@ -92,16 +109,17 @@ Func DiagnoseRefresh ($drcheckerror = "yes")
 		$drdiagcolor     = $myred
 		Select
 			Case $drmailok = ""
-				$droktext = "Please enter a valid E-Mail address"
+				$droktext = @CR & "Please enter a valid E-Mail address "
+				If $diagmailcount > 1 Then $droktext &= @CR & "atempt " & $diagmailcount & " of 5"
 				$drfocus  = $diagnosemailhandle
-			Case $diagnoselang = ""
-				$droktext = "Please set your preferred language"
+			Case StringStripWS ($diagnoselang,8) = ""
+				$droktext = @CR & "Please set your preferred language"
 				$drfocus  = $diagnoselanghandle
 			Case $drdescmsg <> ""
 				$droktext = $drdescmsg
 				$drfocus  = $diagnosedeschandle
 			Case Else
-				$drdiagcolor = $mylightgray
+				$drdiagcolor = $myblue
 		EndSelect
 	EndIf
 	ControlFocus      ($diagnoseguihandle, "", $drfocus)
@@ -109,7 +127,7 @@ Func DiagnoseRefresh ($drcheckerror = "yes")
 	GUICtrlSetData    ($diagnosetexthandle, $droktext)
 	GUICtrlSetBkColor ($diagnosetexthandle, $drdiagcolor)
 	GUICtrlSetBkColor ($diagnosemischandle, $myyellow)
-	GUICtrlSetBkColor ($diagnoselisthandle, $mylightgray)
+	GUICtrlSetBkColor ($diagnoselisthandle, $myblue)
 	GUICtrlSetData    ($diagnoselisthandle, $drmisclist)
 	GUISetState       (@SW_SHOW, $diagnoseguihandle)
 	Return $drdiagcolor
@@ -138,9 +156,10 @@ Func DiagnoseRun ($drerrorcode, $drname = $useridformat, $dremail = "None", $dre
 		CommonFlashEnd ("")
 		Return
 	EndIf
-	_ArrayInsert ($templogarray, 0, "New York Time = " & $nytimeus)
+	If $firmwaremode <> "EFI" Then DirectPreCheck ("")
+	_ArrayInsert  ($templogarray, 0, "New York Time = " & $nytimeus)
 	BaseFuncArrayWrite ($datapath & "\diag.log.main.txt", $templogarray)
-	FileCopy        ($windowstempgrub & "\utilityscan.log.txt", $datapath & "\diag.log.util.txt",1)
+	FileCopy           ($windowstempgrub & "\utilityscan.log.txt", $datapath & "\diag.log.util.txt",1)
 	If Ubound ($efiassignlogarray) > 0 Then _
 		BaseFuncArrayWrite ($datapath & "\diag.log.efiassign.txt", $efiassignlogarray, $FO_OVERWRITE, "", 0)
 	DirRemove ($diagpath, 1)
@@ -188,11 +207,14 @@ Func DiagnoseRun ($drerrorcode, $drname = $useridformat, $dremail = "None", $dre
 EndFunc
 
 Func DiagnoseUpload ($duname, $dulocalfile, $duerrdesc)
-	$dumessage  = 'The diagnostic file can now be uploaded'        & @CR
-	$dumessage &= 'to the Grub2Win support server.'                & @CR & @CR & @CR
-	$dumessage &= 'Click "Yes" to upload the file.'                & @CR
-	$dumessage &= 'Click "No" if you prefer to email the file.'    & @CR
-	$durc = MsgBox ($mbquestyesno, "** Upload Ready **", $dumessage)
+	$durc = $IDNO
+	If $vacationflag = "" Then
+		$dumessage  = 'The diagnostic file can now be uploaded'        & @CR
+		$dumessage &= 'to the Grub2Win support server.'                & @CR & @CR & @CR
+		$dumessage &= 'Click "Yes" to upload the file.'                & @CR
+		$dumessage &= 'Click "No" if you prefer to email the file.'    & @CR
+		$durc = MsgBox ($mbquestyesno, "** Upload Ready **", $dumessage)
+	EndIf
 	If $durc <> $IDYES Then
 		CommonMailIt ("file", $dulocalfile, $duerrdesc)
 		Return "OK"
@@ -227,4 +249,46 @@ Func DiagnoseCompress ($dczipoutput, $dczipinput)
 	$dcparms         = ' a "' & $dczipoutput & '"  "' & $dczipinput & '\*"'
 	RunWait          ($zippath & $dcparms, "", @SW_HIDE)
 	CommonFlashEnd   ("Diagnostic Data Compression Is Complete")
+EndFunc
+
+Func DiagDiskPart ()
+	Dim $dparray [1]
+	_ArrayAdd ($dparray, "List Disk")
+	_ArrayAdd ($dparray, "List Volume")
+	For $dpsub = 0 To Ubound ($partitionarray) - 1
+		$dpdisk = $partitionarray [$dpsub] [$pDiskNumber]
+		$dppart = $partitionarray [$dpsub] [$pPartNumber]
+		If Not StringIsDigit ($dpdisk) Then ContinueLoop
+		If $dppart = 0 Then
+			_ArrayAdd ($dparray, "")
+			_ArrayAdd ($dparray, "Select Disk "      & $dpdisk)
+	        _ArrayAdd ($dparray, "Detail Disk")
+		    _ArrayAdd ($dparray, "List Partition")
+		Else
+			_ArrayAdd ($dparray, "Select Partition " & $dppart)
+	        _ArrayAdd ($dparray, "Detail Partition")
+		EndIf
+	Next
+	_ArrayAdd ($dparray, "Exit")
+	BaseFuncArrayWrite ($workdir & "\part.input.txt", $dparray)
+EndFunc
+
+Func DiagVacation ()
+	; Return                                                                       ; Disable vacation code
+	$dvstart = Int (_DateToDayValue (2024, 12, 07)) + 1
+	$dvend   = Int (_DateToDayValue (2025, 01, 14)) + 1
+	If $todayjul < $dvstart Or $todayjul > $dvend Then Return                      ; Control
+	$dvmsg   = "         **  Please Note  **"            & @CR & @CR
+	$dvmsg  &= "I am away on vacation from"              & @CR & @CR
+	$dvmsg  &= TimeLine ($dvstart, "", "yes", "yes", "") & @CR
+	$dvmsg  &= "                   to"                   & @CR
+	$dvmsg  &= TimeLine ($dvend,   "", "yes", "yes", "") & @CR & @CR & @CR
+	$dvmsg  &= 'If you need immediate assistance, click "Yes"' & @CR & @CR
+	$dvmsg  &= 'Your diagnostics will then be sent to '  & @CR
+	$dvmsg  &= $edemail                            & @CR & @CR
+	$dvmsg  &= 'Ed is covering Grub2Win while I am away' & @CR
+	$dvmsg  &= '         ** Many Thanks Ed **'           & @CR
+	$vacationflag = "yes"
+	$diagemail    = $edemail
+	Return MsgBox ($mbinfoyesno, "", $dvmsg)
 EndFunc

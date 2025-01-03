@@ -1,3 +1,5 @@
+#include-once
+#include <MsgBoxConstants.au3>
 Global  $regkeycpu, $regcountry, $regkeyrestrict
 Global  $regcpuname, $regfirm, $regrestrictdata, $regmachguid
 Global  $diaguser, $diagpass, $diagremote, $statuser, $statpass, $statremote
@@ -13,9 +15,6 @@ EndFunc
 Func  SecureCheckLicensed ($srdummy = "")
 EndFunc
 
-Func  SecureAuth          ($srdummy = "", $srdummy2 = "")
-EndFunc
-
 Func  SecurePutFTP        ($srdummy = "", $srdummy2 = "")
 EndFunc
 
@@ -23,6 +22,6 @@ If StringInStr (@ScriptName, "xxSpecialSecure") Then MsgBox (1, "", "           
 
 Func  SecureCheck ()
 	If @Compiled Then Return
-	$scrc = MsgBox (4, "SecureCheck", "Status Is Dummy" & @CR & @CR & "Do You Want To Cancel?", 5)
+	$scrc = MsgBox ($IDOK + $IDABORT + $MB_TOPMOST, "SecureCheck", "Status Is Dummy" & @CR & @CR & "Do You Want To Cancel?", 5)
 	If $scrc = 6 Or $scrc = -1 Then Exit
 EndFunc

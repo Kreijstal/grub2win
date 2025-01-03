@@ -76,7 +76,6 @@ Func UpdateRunGUI ($rgnewraw = "", $rgmessage = "", $rgcolor = $mylightgray)
 				CommonHelp ("Checking For Updates")
 				ContinueLoop
 			Case $rgstatus = $updatehandledown Or $rgstatus = $updatehandlerefresh
-				BaseFuncSingleWrite ($downloadjulian, $todayjul)
 				BaseFuncGUIDelete     ($updatehandlegui)
 				Sleep (250)
 				$rgresult = NetFunctionGUI   ("DownloadExtract", $windowstempgrub & "\Download\grubinst", $downsourcesubproj, _
@@ -85,8 +84,7 @@ Func UpdateRunGUI ($rgnewraw = "", $rgmessage = "", $rgcolor = $mylightgray)
 					$setuperror = $rgresult
 					ExitLoop
 				EndIf
-		        SecureAuth      ("Set", $todayjul)
-				NetFunctionGUI  ("Run", $windowstempgrub & "\Download\grubinst", $downsourcesubproj, _
+		        NetFunctionGUI  ("Run", $windowstempgrub & "\Download\grubinst", $downsourcesubproj, _
 					"GrubInst", "Grub2Win Software")
 			Case $rgstatus  = $updatehandleview
 				If ProcessExists ($rgpidview) Then ContinueLoop
@@ -115,7 +113,8 @@ Func UpdateRunGUI ($rgnewraw = "", $rgmessage = "", $rgcolor = $mylightgray)
 					GUICtrlSetData     ($updatehandlecheck, "Checking For Grub2Win Updates")
 					GUICtrlSetState    ($updatehandleclose,  $guihideit)
 					GUICtrlSetState    ($updatehandlevisit,  $guihideit)
-					$rgresult = NetFunctionGUI ("Download", $updatechangelog, $downsourcesubproj, "GrubQuery", "Change Log", "")
+					$netshortlimit     = 256
+					$rgresult = NetFunctionGUI ("DownloadOnly", $updatechangelog, $downsourcesubproj, "GrubQuery", "Change Log", "")
 					GUICtrlSetState    ($updatehandleclose,  $guishowit)
 					GUICtrlSetState    ($updatehandlevisit,  $guishowit)
 					If $rgresult <> "OK" Then
@@ -145,16 +144,10 @@ Func UpdateRunGUI ($rgnewraw = "", $rgmessage = "", $rgcolor = $mylightgray)
 EndFunc
 
 Func UpdateGetVersion (ByRef $gvcolor, ByRef $gvmessage)
-	$gvrecord = BaseFuncSingleRead ($updatechangelog, "yes")
-	$gvrecord = StringReplace   ($gvrecord, $currentstring, "")
-	$gvrecord = StringReplace   ($gvrecord, @TAB, " ")
-	$gvrecord = StringStripWS   ($gvrecord, 7)
-	$gvsplit  = StringSplit     ($gvrecord, " ")
-	If @error Then Return ""
-	$gvnewraw = $gvsplit [2]
+	$gvnewraw       = UpdateParseChangeLog ("Version")
 	$gvnewver = Number (StringReplace ($gvnewraw,   ".", ""))
 	$gvoldver = Number (StringReplace ($basrelcurr, ".", ""))
-	If Ubound ($gvsplit) > 7 Then $updatenewbuild = $gvsplit [7]
+	;MsgBox ($mbontop, "Ver", $gvnewraw & @CR & $gvnewbuild)
 	;_ArrayDisplay ($gvsplit, $gvnewver & " " & $gvoldver)
 	If  $gvoldver  = $gvnewver Then
 		$gvmessage = "This is the latest version available"
@@ -168,11 +161,28 @@ Func UpdateGetVersion (ByRef $gvcolor, ByRef $gvmessage)
 	Return $gvnewraw
 EndFunc
 
+Func UpdateParseChangeLog ($clfield)
+	$clreturn = ""
+	If Not IsArray ($changelogarray) Then
+		$clrecord       = BaseFuncSingleRead ($updatechangelog, "yes")
+		$clrecord       = StringReplace   ($clrecord, $currentstring, "")
+		$clrecord       = StringReplace   ($clrecord, @TAB, " ")
+		$clrecord       = StringStripWS   ($clrecord, 7)
+		$changelogarray = StringSplit     ($clrecord, " ")
+		If @error Then Dim $changelogarray [1]
+		;_ArrayDisplay ($changelogarray)
+	EndIf
+	$clloc = _ArraySearch ($changelogarray, $clfield)
+	If Not @error And Ubound ($changelogarray) > $clloc + 1 Then $clreturn = $changelogarray [$clloc + 1]
+	Return $clreturn
+EndFunc
+
 Func UpdateSetMessage ($smcolor, $smmessage2, $smnewraw)
 	$upautohandle         = ""
-	$updatehandleview     = CommonScaleCreate ("Button", "View The Change Log", 13, 46, 24, 4)
-	$smbuildmsg           = "Build " & $updatenewbuild
-	If $basrelbuild <> $updatenewbuild Then _
+	$smnewbuild           = UpdateParseChangeLog ("Build")
+	$updatehandleview     = CommonScaleCreate    ("Button", "View The Change Log", 13, 46, 24, 4)
+	$smbuildmsg           = "Build " & $smnewbuild
+	If $basrelbuild <> $smnewbuild Then _
 		$smbuildmsg = "From Build " & $basrelbuild & " To " & $smbuildmsg
 	$updatehandlerefresh  = CommonScaleCreate ("Button", _
 		@CR & "Refresh Grub2Win Version " & $smnewraw & @CR & $smbuildmsg,     13, 53, 24, 9, $BS_MULTILINE)

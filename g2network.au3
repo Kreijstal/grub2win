@@ -2,11 +2,6 @@
 #include-once
 #include <g2common.au3>
 
-Global $ftptimerstart, $ftptimeout, $ftpseconds
-Global $nethandlegui, $nethandlecancel, $nethandlebar, $nethandleprogtext
-Global $netsecsave, $nettimer, $netlogdesc = "Grub2Win Network Log"
-Global $netdownsite, $netlogmode = $FO_OVERWRITE
-
 If StringInStr (@ScriptName, "g2network") Then
 	$zippath =  @ScriptDir & "\" & $zipmodule
 	;$netrc = NetFunctionGUI  ("Download",  $windowstempgrub & "\Download\grubinst", "GrubInst", "Grub2Win Software", "")
@@ -16,24 +11,40 @@ If StringInStr (@ScriptName, "g2network") Then
 	BaseFuncCleanupTemp  ("Network", "")
 EndIf
 
+Func NetCheckSpace ($csaction, $cslocalfile)
+	$csworkdrive = StringLeft ($cslocalfile, 3)
+	$csrequired  = 50
+	$csresult    = "OK"
+	If $csaction = "DownloadOnly" Then $csrequired = 1
+	If $netfreespace = "" Then $netfreespace = Int (DriveSpaceFree ($csworkdrive))
+	If $csrequired > $netfreespace Then
+		$cserrmsg  = "There Is Not Enough Free Space On Your " & $csworkdrive & " Drive" & @CR & @CR
+		$cserrmsg &= $csrequired & " MB Is Requred For Grub2Win" & @CR & "Download, Extract And Setup Work Space."
+		MsgBox ($mbwarnok, "**** Space Check Failed ***        " & $netfreespace & " MB Available", $cserrmsg)
+		$csresult = "NoSpace"
+	EndIf
+	Return $csresult
+EndFunc
+
 Func NetFunctionGUI ($fgaction, $fglocalfile, $fgremotedir, $fgremotefile, $fgdesc, $fginitgui = "yes", _
 		$fgrunparms = $parmsetup & " " & $parmfromupdate)
 	$fgresult = "OK"
 	SecureCheck          ()
 	BaseFuncGUIDelete      ($upmessguihandle)  ; Remove after testing
 	DirCreate            ($windowstempgrub &  "\Download")
-	$nethandlegui        = CommonScaleCreate ("GUI",    $netlogdesc,  -1, -1, 60,  50, $WS_EX_STATICEDGE)
-	$fghandlemsg         = CommonScaleCreate ("Label",  "",          3.3,  3, 52,  25, $SS_CENTER)
-	$fghandleclose       = CommonScaleCreate ("Button", "Close",      48, 41,  7, 3.2)
-	$nethandlebar        = CommonScaleCreate ("Progress", "",         10, 31, 40,   3)
-	$nethandleprogtext   = CommonScaleCreate ("Label",    "",          1, 35, 59,   3, $SS_CENTER)
-	$nethandlecancel     = CommonScaleCreate ("Button",   "",         22, 41, 15,   3)
+	$nethandlegui        = CommonScaleCreate ("GUI",    $netlogdesc,  -1, -1, 70,  50, $WS_EX_STATICEDGE)
+	$fghandlemsg         = CommonScaleCreate ("Label",  "",          3.3,  2, 63,  25, $SS_CENTER)
+	$nethandlebar        = CommonScaleCreate ("Progress", "",         15, 31, 40,   3)
+	$nethandleprogtext   = CommonScaleCreate ("Label",    "",          1, 35, 69,   3, $SS_CENTER)
+	$nethandlecancel     = CommonScaleCreate ("Button",   "",         27, 40, 15,   3)
+	$fghandleclose       = CommonScaleCreate ("Button", "Close",      57, 40,  7, 3.2)
 	GUICtrlSetBkColor    ($fghandlemsg, $myyellow)
 	GUISetBkColor        ($myblue,  $nethandlegui)
 	If $fginitgui <> "" Then GUISetState (@SW_SHOW, $nethandlegui)
 	NetProgressVisible   ($guihideit)
     WinSetOnTop          ($nethandlegui, "", 1)
-	If StringInStr ($fgaction, "Download") Then
+	$fgresult = NetCheckSpace ($fgaction, $fglocalfile)
+	If $fgresult = "OK" And StringInStr ($fgaction, "Download") Then
 		$fgtimer  = TimeTickInit ()
 		$fgresult = NetDownLoad ($fglocalfile, $fgremotedir, $fgremotefile, $fgdesc, "", $fghandlemsg, $fghandleclose)
 		NetLog           ("End Download     " & $fgresult, $fgdesc, $fgtimer)
@@ -150,6 +161,7 @@ EndFunc
 Func NetDownINet ($dilocalfile, $diremotedir, $diremotefile, $didesc, $ditimeout = 30)
 	$diremoteurl = $diremotedir & "/" & $diremotefile & "/download"
 	$dihandle    = InetGet ($diremoteurl, $dilocalfile, $INET_FORCERELOAD, $INET_DOWNLOADBACKGROUND)
+	$direturn    = "OK"
 	NetProgressUpdate ("Start", "", "")
 	Do
 		$diinfoarray = InetGetInfo  ($dihandle, -1)
@@ -158,16 +170,23 @@ Func NetDownINet ($dilocalfile, $diremotedir, $diremotefile, $didesc, $ditimeout
 		$disize      = $diinfoarray [$INET_DOWNLOADSIZE]
 		$dicomplete  = $diinfoarray [$INET_DOWNLOADSUCCESS]
 		$dierrorcode = $diinfoarray [$INET_DOWNLOADERROR]
-		If $dierrorcode <> 0 Then Return "The Download Of The " & $didesc & " Failed  -  Code " & $dierrorcode & "   "
-		$dipercent   = CommonCalcPercent  ($diread, $disize)
-		$diprogress  = NetProgressUpdate ("update", $dipercent, $dipercent & "%", $ditimeout)
-		If $diprogress =  "TimeOut" Then Return "The Download Of The " & $didesc & " Timed Out After "     & $netsecsave & " Seconds."
-		If $diprogress <> "OK"      Then Return "The Download Of The " & $didesc & " Was Cancelled After " & $netsecsave & " Seconds."
+		If $dierrorcode  = 0 Then
+			If $netshortlimit <> "" And $diread > $netshortlimit Then $direturn = "Short"
+			$dipercent     = CommonCalcPercent  ($diread, $disize)
+			$diprogress    = NetProgressUpdate ("update", $dipercent, $dipercent & "%", $ditimeout)
+			If $diprogress <> "OK"      Then $direturn = "The Download Of The " & $didesc & " Was Cancelled After " & $netsecsave & " Seconds."
+			If $diprogress =  "TimeOut" Then $direturn = "The Download Of The " & $didesc & " Timed Out After "     & $netsecsave & " Seconds."
+		Else
+			$direturn = "The Download Of The " & $didesc & " Failed  -  Code " & $dierrorcode & "   "
+		EndIf
 		;ProgressSet ($dipercent, Int ($dipercent) & "% Complete" & "            " & $diseconds & " Seconds")
 		;MsgBox ($mbontop, "Read", $disize & @CR & $diread & @CR & $dipercent)
-	Until $dicomplete = "true"
-	If FileGetSize ($dilocalfile) < $kilo Then Return "Download Of The " & $didesc & " Failed (Size)."
-	Return "OK"
+	Until $dicomplete = "true" Or $direturn <> "OK"
+	If $direturn   = "OK" And FileGetSize ($dilocalfile) < $kilo Then $direturn = "Download Of The " & $didesc & " Failed (Size)."
+	If $direturn   = "Short" Then $direturn = "OK"
+	$netshortlimit = ""
+	InetClose ($dihandle)
+	Return     $direturn
 EndFunc
 
 Func NetDownFTP ($dflocalfile, $dfremotefile, $dfdesc, $dftimeout = 30)
@@ -207,18 +226,20 @@ EndFunc
 
 Func NetExtract ($nezipfile, $nedesc, $nehndmsg = "", $nehndclose = "", $netimeout = 30)
 	DirCreate       ($extracttempdir)
-	$neresult       = "OK"
+	$nelog          =  ""
+	$neresult       =  "OK"
 	If $nehndmsg    <> "" Then CommonLabelJustify ($nehndmsg, "Now Extracting The " & $nedesc, 1)
 	If $nehndclose  <> "" Then GUICtrlSetState   ($nehndclose, $guihideit)
 	$neparms        = ' x "' & $nezipfile & '" -aoa -o"' & $extracttempdir & '"'
 	NetProgressUpdate ("Start", "", "", $netimeout, "Extract")
-	$nepidextract   = Run ($zippath & $neparms, "", @SW_HIDE)
+	$nepidextract   = Run ($zippath & $neparms, "", @SW_HIDE, $STDERR_MERGED)
 	$neprocrc       = ProcessWait ($zipmodule, 5)
 	;MsgBox ($mbontop, "Extract " & @error, $nepidextract & @CR & @CR & $neparms & @CR & @CR & $zippath)
 	If $nepidextract = 0 Or $neprocrc = 0 Then
 		$neresult = "7-Zip Did Not Initialize Properly   " & $nepidextract & "    " & $neprocrc
 	Else
 		While 1
+			$nelog     &= StdOutRead ($nepidextract)
 			If $neresult <> "OK" Or Not ProcessExists ($nepidextract) Then ExitLoop
 			$nepercent  = CommonCalcPercent  (DirGetSize ($extracttempdir), (19 * $mega))
 			$neprogress = NetProgressUpdate ("Update", $nepercent, $nepercent & "%", $netimeout, "Extract")
@@ -235,15 +256,22 @@ Func NetExtract ($nezipfile, $nedesc, $nehndmsg = "", $nehndclose = "", $netimeo
 			EndSelect
 		Wend
 	EndIf
-	ProcessClose   ($nepidextract)
-	If $neresult =  "OK" And DirGetSize ($extracttempdir) < $kilo Then _
+	ProcessClose        ($nepidextract)
+	$neinsize    =  BaseFuncAddThousands (FileGetSize ($nezipfile))
+	$neoutcheck  =                       (DirGetSize  ($extracttempdir))
+	$neoutsize   =  BaseFuncAddThousands ($neoutcheck)
+	BaseFuncSingleWrite ($workdir & $extractlogstring, @CR & TimeLine () & @CR & $nelog)
+	If $neresult =  "OK" And $neoutcheck < $kilo Then _
 		$neresult = "7-Zip Did Not Complete Normally"
 	If $neresult <> "OK" Then
 		FileDelete ($nezipfile)
 		DirRemove  ($extracttempdir, 1)
+		MsgBox ($mbontop, "** Extract Error **", "Input File Size = " & $neinsize & @CR & @CR & _
+			"Output Dir Size = " & $neoutsize & @CR & @CR & @CR & "7-Zip Log Text = " & $nelog)
 		$neresult  = "The Zip Extract Failed" & @CR & @CR
-		$neresult &= "** Extract Failures Are Often Caused By Your Antivirus Software **" & @CR & @CR
-		$neresult &= "Parms = " & $neparms
+		$neresult &= "** Extract Failures Are Often Caused By Your Antivirus Software **" & @CR
+		$neresult &= "**     Or Not Having Enough Disk Space For The Output Files     **" & @CR & @CR
+		$neresult &= "Parms = " & StringReplace ($neparms, " ", @CR)
 		CommonLabelJustify  ($nehndmsg, $neresult, 3)
 		If $nehndclose <> "" Then GUICtrlSetState ($nehndclose, $guishowit)
 	EndIf

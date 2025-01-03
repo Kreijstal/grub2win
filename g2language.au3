@@ -1,43 +1,6 @@
 #include-once
 #include <g2basefunc.au3>
 
-Const  $sLangName = 0, $sLangCode = 1, $sLangNative = 2, $sLangCulture = 3, $sLangSubculture = 4
-
-Const  $langarray [33] [5] =                                                             _
-		   [["Catalan",                "ca",    "Catalá",               "  ",  "0403"],  _
-			["Chinese (simplified)",   "zh_CN", "Zhongguó (Jianhuàzì)", "  ",  "0804"],  _
-			["Chinese (traditional)",  "zh_TW", "Zhongguó (Chuántong)", "  ",  "0404"],  _
-			["Croatian",               "hr",    "Hrvatski",             "  ",  "041a"],  _
-			["Danish",                 "da",    "Dansk",                "  ",  "0406"],  _
-		    ["Dutch",                  "nl",    "Nederlands",           "13"         ],  _
-		    ["English",                "en",    "English",              "09"         ],  _
-		    ["Esperanto",              "eo",    "Esperanton"                         ],  _
-		    ["Finnish",                "fi",    "Suomen Kieli",         "  ",  "040b"],  _
-   		    ["French",                 "fr",    "Français",             "0c"         ],  _
-			["Galician",               "gl",    "Galego",               "  ",  "0456"],  _
-		    ["German",                 "de",    "Deutsch",              "07"         ],  _
-			["Hebrew",                 "he",    "עִבְרִית",                "  ",  "040d"],  _
-			["Hungarian",              "hu",    "Magyar Nyelv",         "  ",  "040e"],  _
-			["Indonesian",             "id",    "Bahasa Indonesia",     "  ",  "0421"],  _
-		    ["Italian",                "it",    "Italiano",             "10"         ],  _
-		    ["Japanese",               "ja",    "Nihongo",              "  ",  "0411"],  _
-		    ["Korean",                 "ko",    "Pyojun-eo",            "  ",  "0412"],  _
-		    ["Lithuanian",             "lt",    "Lietuviu",             "  ",  "0427"],  _
-		    ["Norwegian",              "nb",    "Nynorsk",              "14"         ],  _
-		    ["Polish",                 "pl",    "Jezyk Polski",         "  ",  "0415"],  _
-		    ["Portuguese",             "pt",    "Português",            "16"         ],  _
-		    ["Punjabi (India)",        "pa",    "Pajabi (India)",       "  ",  "0446"],  _
-			["Romanian",               "ro",    "Româna",               "  ",  "0418"],  _
-		    ["Russian",                "ru",    "Russkiy Yazyk",        "  ",  "0419"],  _
-			["Serbian",                "sr",    "Srpski",               "1a"         ],  _
-			["Slovenian",              "sl",    "Slovene",              "  ",  "0424"],  _
-		    ["Spanish",                "es",    "Español",              "0a"         ],  _
-		    ["Swedish",                "sv",    "Svenska",              "1d"         ],  _
-		    ["Turkish",                "tr",    "Türkçe",               "  ",  "041f"],  _
-		    ["Ukranian",               "uk",    "Ukrajinska",           "  ",  "0422"],  _
-			["Vietnamese",             "vi",    "Viet",                 "  ",  "042a"],  _
-			["** Unsupported **",      "en",    "English"]]
-
 Const  $langendarray        = Ubound        ($langarray) - 1
 Const  $langsyssubculture   = StringReplace (@OSLang,  "0000", "")
 Const  $langxpdesc          = _WinAPI_GetLocaleInfo ($LOCALE_SYSTEM_DEFAULT, $LOCALE_SLANGUAGE)
@@ -86,7 +49,7 @@ Func LangWarn ()
 	$lsmessage &= 'Your currently selected language is not supported by GNU Grub.'  & @CR & @CR & @CR
 	$lsmessage &= 'Grub2Win will start with the default language - English.'        & @CR & @CR & @CR
 	$lsmessage &= 'You can then continue to use English, or change to one'          & @CR
-	$lsmessage &= 'of the 31 supported languages.'                                  & @CR & @CR & @CR
+	$lsmessage &= 'of the 32 supported languages.'                                  & @CR & @CR & @CR
 	$lsmessage &= 'Simply click OK to open the Grub2Win main configuration'         & @CR
 	$lsmessage &= 'screen. Then choose your favorite language.'                     & @CR & @CR & @CR
 	MsgBox ($mbinfook, "Selected Language = " & $langheader, $lsmessage)

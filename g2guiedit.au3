@@ -1,154 +1,161 @@
 #include-once
 #include  <g2common.au3>
 
-Func EditRunGUI($emsub)
-  	Local $emlastentry, $emlastpause, $emlastdrvc
-	CustomClearWorkFile ($emsub)
-	EditSetup($emsub)
-	$emwinorderhold = $bcdwinorder
-	EditRefresh ($emsub, "Setup")
+Func EditRunGUI($rgsub, $rgparent = $handleselectiongui)
+	;_ArrayDisplay ($selectionarray, $rgsub)
+  	Local $rglastentry, $rglastpause, $rglastdrvc
+	CustomClearWorkFile ($rgsub)
+	EditSetup   ($rgsub, $rgparent)
+	$rgwinorderhold = $bcdwinorder
+	EditRefresh ($rgsub, "Setup")
 	While 1
-		$emstatusarray = GUIGetMsg (1)
-		$emhandle      = $emstatusarray [1]
-		$emstatus      = $emstatusarray [0]
-		If $emhandle <> $edithandlegui Then	ContinueLoop
-		If $emstatus = $GUI_EVENT_CLOSE Or $emstatus = $editbuttoncancel Then
-			EditCloseout ($emsub, $emwinorderhold)
+		$rgstatusarray = GUIGetMsg (1)
+		$rghandle      = $rgstatusarray [1]
+		$rgstatus      = $rgstatusarray [0]
+		If $rghandle <> $edithandlegui Then	ContinueLoop
+		If $rgstatus = $GUI_EVENT_CLOSE Or $rgstatus = $editbuttoncancel Then
+			EditCloseout ($rgsub, $rgwinorderhold)
 			ExitLoop
 		EndIf
 		Select
-			Case $emstatus < 1
+			Case $rgstatus < 1
 				Select
-					Case $emstatus <> $GUI_EVENT_PRIMARYUP
+					Case $rgstatus <> $GUI_EVENT_PRIMARYUP
 						ContinueLoop
-					 Case CommonCheckUpDown ($edithandlechaindrv, $emlastdrvc, 0, 9)
-						$emchainnumber = GUICtrlRead ($edithandlechaindrv)
-						If $emchainnumber > $partdisknumber Then $emchainnumber = $partdisknumber
-						$selectionarray [$emsub] [$sChainDrive] = $emchainnumber
-						EditRefresh ($emsub, "UPDown drvc")
-					Case CommonCheckUpDown ($edithandleentry, $emlastentry, 0, $selectionautohigh)
-						$editnewentry = $emlastentry
-					Case CommonCheckUpDown ($edithandlepause, $emlastpause)
-						EditPause ($emsub)
+					 Case CommonCheckUpDown ($edithandlechaindrv, $rglastdrvc, 0, 9)
+						$rgchainnumber = GUICtrlRead ($edithandlechaindrv)
+						If $rgchainnumber > $partdisknumber Then $rgchainnumber = $partdisknumber
+						$selectionarray [$rgsub] [$sChainDrive] = $rgchainnumber
+						EditRefresh ($rgsub, "UPDown drvc")
+					Case CommonCheckUpDown ($edithandleentry, $rglastentry, 0, $selectionautohigh)
+						$editnewentry = $rglastentry
+					Case CommonCheckUpDown ($edithandlepause, $rglastpause)
+						EditPause ($rgsub)
 				EndSelect
 			Case Else
 				Select
-					Case $emstatus = $editprompticon Or $emstatus = $editpictureicon
+					Case $rgstatus = $edithandlewinmenu
+						EditWinMenu    ()
+					Case $rgstatus = $edithandlehiber
+						EditHibernate ()
+					Case $rgstatus = $editprompticon Or $rgstatus = $editpictureicon
 						If $editerrorok = "yes" Then
-							IconRunGUI    ($emsub)
-							EditRefresh   ($emsub, "Icon Edit")
+							IconRunGUI    ($rgsub)
+							EditRefresh   ($rgsub, "Icon Edit")
 						EndIf
-						EditRefresh ($emsub, "Icon")
-					Case $emstatus = $edithandleloadby Or $emstatus = $edithandlelayout Or _
-						 $emstatus = $edithandlediskr   Or $emstatus = $edithandlediskb
-						EditDiskAddress ($emsub)
-						EditRefresh ($emsub, "Diskaddr")
-					Case $emstatus = $edithandlesrchr
-						$selectionarray [$emsub] [$sRootSearchArg] = GUICtrlRead ($edithandlesrchr)
-						EditRefresh ($emsub, "srchr")
-					Case $emstatus = $edithandlesrchl
-						$selectionarray [$emsub] [$sRootSearchArg] = GUICtrlRead ($edithandlesrchl)
-						EditRefresh ($emsub, "srchl")
-					Case $emstatus = $edithandleselfile
-						EditKernelSelect ($emsub)
-						EditRefresh  ($emsub, "SelFile")
-					Case $emstatus = $editpromptcust Or $emstatus = $editlistcustedit
-						CustomEditData ($emsub)
-						EditRefresh ($emsub, "Cust")
-					Case $emstatus = $edithandleseliso
-						EditISOSelect ($emsub)
-					Case $emstatus = $editpromptsample
-						EditLoadSample ($emsub)
-						EditRefresh ($emsub, "Sample")
+						EditRefresh ($rgsub, "Icon")
+					Case $rgstatus = $edithandleloadby Or $rgstatus = $edithandlelayout Or _
+						 $rgstatus = $edithandlediskr   Or $rgstatus = $edithandlediskb
+						EditDiskAddress ($rgsub)
+						EditRefresh ($rgsub, "Diskaddr")
+					Case $rgstatus = $edithandlesrchr
+						$selectionarray [$rgsub] [$sRootSearchArg] = GUICtrlRead ($edithandlesrchr)
+						EditRefresh ($rgsub, "srchr")
+					Case $rgstatus = $edithandlesrchl
+						$selectionarray [$rgsub] [$sRootSearchArg] = GUICtrlRead ($edithandlesrchl)
+						EditRefresh ($rgsub, "srchl")
+					Case $rgstatus = $edithandleselfile
+						EditKernelSelect ($rgsub)
+						EditRefresh  ($rgsub, "SelFile")
+					Case $rgstatus = $editpromptcust Or $rgstatus = $editlistcustedit
+						CustomEditData ($rgsub)
+						EditRefresh ($rgsub, "Cust")
+					Case $rgstatus = $edithandleseliso
+						EditISOSelect ($rgsub)
+					Case $rgstatus = $editpromptsample
+						EditLoadSample ($rgsub)
+						EditRefresh ($rgsub, "Sample")
 				EndSelect
-				If $selectionarray [$emsub] [$sOSType] = "windows" And $firmwaremode = "EFI" Then EditCheckWinOrder ($emstatus, $emsub)
-				$emloadby  = $selectionarray[$emsub][$sLoadBy]
+				If $selectionarray [$rgsub] [$sOSType] = $winstring Then EditCheckWinOrder ($rgstatus, $rgsub)
+				$rgloadby  = $selectionarray[$rgsub][$sLoadBy]
 				Select
-					Case $emstatus = $edithelphandle
-						If $emloadby = $modecustom Then
+					Case $rgstatus = $edithelphandle
+						If $rgloadby = $modecustom Then
 							CommonHelp ("Entering Custom Code")
 						Else
 							CommonHelp ("Editing OS Details")
 						EndIf
 						ContinueLoop
-					Case $emstatus = $editbuttonok Or $emstatus = $editbuttonapply
+					Case $rgstatus = $editbuttonok Or $rgstatus = $editbuttonapply
 						If $editnewentry <> $editholdentry Then $selectionarray [$editholdentry][$sSortSeq] = ($editnewentry * 100) + 10
-						$selectionarray[$emsub][$sUpdateFlag] = "updated"
-						If $emstatus = $editbuttonok And FileExists ($customworkfile) Then
-							FileCopy ($customworkfile, $custconfigstemp & "\" & CommonCustomName ($selectionarray [$emsub] [$sEntryTitle]), 1)
-							$selectionarray [$emsub] [$sCustomName] =           CommonCustomName ($selectionarray [$emsub] [$sEntryTitle])
+						$selectionarray[$rgsub][$sUpdateFlag] = "updated"
+						If $rgstatus = $editbuttonok And FileExists ($customworkfile) Then
+							FileCopy ($customworkfile, $custconfigstemp & "\" & CommonCustomName ($selectionarray [$rgsub] [$sEntryTitle]), 1)
+							$selectionarray [$rgsub] [$sCustomName] =           CommonCustomName ($selectionarray [$rgsub] [$sEntryTitle])
 						EndIf
-						EditRefresh($emsub, "OK")
-						;If $emstatus = $editbuttonapply Then _ArrayDisplay ($selectionarray, "Apply")
-						If $emstatus = $editbuttonok And $editerrorok = "yes" Then ExitLoop
-					Case $emstatus = $edithandletitle
-						EditTitle ($emsub)
-					Case $emstatus = $edithandlefix
-						$emfix = GUICtrlRead ($edithandletitle)
-						If $edittitleok = "invalchar" Then $emfix = BaseFuncRemoveCharSpec ($emfix)
-						If StringLen ($emfix) > 80    Then $emfix = StringLeft (StringStripWS ($emfix, 7), 80)
-						GUICtrlSetData  ($edithandletitle, $emfix)
-						EditTitle       ($emsub)
-						EditCheckErrors ($emsub, "")
-					Case $emstatus = $edithandletype
-						$emtype = GUICtrlRead ($edithandletype)
-						If $emtype = $typeotherlin Then
-							$emothermsg  = 'You must import the Grub configuration file for ' & @CR
-							$emothermsg &= 'Linux Distributions not supported by Grub2Win.'   & @CR & @CR
-							$emothermsg &= 'Click "OK" for detailed import instructions.'
-							$emrc = MsgBox ($mbinfookcan, "** Other Linux **", $emothermsg)
-							If $emrc = $IDOK Then
+						EditRefresh($rgsub, "OK")
+						;If $rgstatus = $editbuttonapply Then _ArrayDisplay ($selectionarray, "Apply")
+						If $rgstatus = $editbuttonok And $editerrorok = "yes" Then ExitLoop
+					Case $rgstatus = $edithandletitle
+						EditTitle ($rgsub)
+					Case $rgstatus = $edithandlefix
+						$rgfix = GUICtrlRead ($edithandletitle)
+						If $edittitleok = "invalchar" Then $rgfix = BaseFuncRemoveCharSpec ($rgfix)
+						If StringLen ($rgfix) > $edittitlemax Then $rgfix = StringLeft (StringStripWS ($rgfix, 7), $edittitlemax)
+						GUICtrlSetData  ($edithandletitle, $rgfix)
+						EditTitle       ($rgsub)
+						EditCheckErrors ($rgsub, "")
+					Case $rgstatus = $edithandletype
+						$rgtype = GUICtrlRead ($edithandletype)
+						If $rgtype = $typeotherlin Then
+							$rgothermsg  = 'You must import the Grub configuration file for ' & @CR
+							$rgothermsg &= 'Linux Distributions not supported by Grub2Win.'   & @CR & @CR
+							$rgothermsg &= 'Click "OK" for detailed import instructions.'
+							$rgrc = MsgBox ($mbinfookcan, "** Other Linux **", $rgothermsg)
+							If $rgrc = $IDOK Then
 								CommonHelp  ("Importing Linux Config Files")
 								CommonEndIt ("Success", "", "", "")
 							EndIf
 							GUICtrlSetData ($edithandletype, "|" & $typestringcust, "")
 							ContinueLoop
 						EndIf
-						If $emtype = $typeuser OR $emtype = $typeimport Then
-							If $emtype = $typeuser   Then CustomUserSectionEdit ("Creation")
-							If $emtype = $typeimport Then ImportRunGUI ()
-							_ArrayDelete ($selectionarray, $emsub)
+						If $rgtype = $typeuser OR $rgtype = $typeimport Then
+							If $rgtype = $typeuser   Then CustomUserSectionEdit ("Creation")
+							If $rgtype = $typeimport Then ImportRunGUI ()
+							_ArrayDelete ($selectionarray, $rgsub)
 							ExitLoop
 						EndIf
-						If $emtype = "posrog" Then
-							BaseFuncGUIDelete ($edithandlegui)
-							BaseFuncGUIDelete ($handleselectiongui)
-							EditCloseout    ($emsub, $emwinorderhold)
-							$emposrc = POSInstall      ()
-							MsgBox      ($mbwarnok, "** POSROG Install Failed", $emposrc)
+						If $rgtype = "posrog" Then
+							BaseFuncGUIDelete   ($edithandlegui)
+							BaseCodeEditHandles ()
+							BaseFuncGUIDelete  ($handleselectiongui)
+							EditCloseout       ($rgsub, $rgwinorderhold)
+							$rgposrc = POSInstall      ()
+							MsgBox      ($mbwarnok, "** POSROG Install Failed", $rgposrc)
 							ExitLoop
 						EndIf
-						EditRefresh($emsub, "Type")
-					Case $emstatus = $edithandlechknv
-						EditKernelParm ($emsub)
-					Case $emstatus = $edithandleparm
-						EditParm($emsub)
-					Case $emstatus = $editbuttonstand
-						$emdefault = CommonParmCalc ($emsub, "Standard")
-						GuiCtrlSetData ($edithandleparm, $emdefault)
-						EditParm($emsub)
-						If $selectionarray [$emsub] [$sFamily] = "linux-android" Then
-							CommonKernelArray ($emsub, $emdefault)
-							EditKernelGUI ($emsub)
+						EditRefresh($rgsub, "Type")
+					Case $rgstatus = $edithandlechknv
+						EditKernelParm ($rgsub)
+					Case $rgstatus = $edithandleparm
+						EditParm($rgsub)
+					Case $rgstatus = $editbuttonstand
+						$rgdefault = CommonParmCalc ($rgsub, "Standard")
+						GuiCtrlSetData ($edithandleparm, $rgdefault)
+						EditParm($rgsub)
+						If $selectionarray [$rgsub] [$sFamily] = "linux-android" Then
+							CommonKernelArray ($rgsub, $rgdefault)
+							EditKernelGUI ($rgsub)
 						EndIf
 						GUICtrlSetState ($editbuttonstand, $guihideit)
 						GUICtrlSetState ($editmessageparm, $guishowit)
-					Case $emstatus = $edithandlegraph
-						EditGraph ($emsub)
-					Case $emstatus = $edithandlehotkey
-						EditHotkey ($emsub)
+					Case $rgstatus = $edithandlegraph
+						EditGraph ($rgsub)
+					Case $rgstatus = $edithandlehotkey
+						EditHotkey ($rgsub)
 					Case Else
 				EndSelect
 		EndSelect
-		;If $emloadby = $modehardaddress Or $emloadby = $modechaindisk Then
+		;If $rgloadby = $modehardaddress Or $rgloadby = $modechaindisk Then
 	WEnd
-	CustomClearWorkFile ($emsub)
-	BaseFuncGUIDelete     ($edithandlegui)
+	CustomClearWorkFile ($rgsub)
+	BaseFuncGUIDelete   ($edithandlegui)
+	BaseCodeEditHandles ()
 	GUICtrlSetState     ($buttonselectionadd,  $guishowit)
 	GUICtrlSetState     ($selectionhelphandle, $guishowit)
 EndFunc
 
-Func EditSetup ($essub)
+Func EditSetup ($essub, $esparent)
 	;_ArrayDisplay ($selectionarray)
 	GUICtrlSetState ($buttonselectionadd,  $guihideit)
 	GUICtrlSetState ($selectionhelphandle, $guihideit)
@@ -164,19 +171,22 @@ Func EditSetup ($essub)
 	Dim $edithandlewintitle [6]
 	$editlimit = UBound($selectionarray) - 1
 	BaseFuncGUIDelete ($edithandlegui)
-	$edithandlegui  = CommonScaleCreate ("GUI", "Editing Menu Slot " & $essub, -1, -1, 100, 70, -1, "", $handleselectiongui)
+	BaseCodeEditHandles ()
+	$edithandlegui  = CommonScaleCreate ("GUI", "Editing Menu Slot " & $essub, -1, -1, 100, 70, -1, "", $esparent)
 	GUISwitch ($edithandlegui)
 	$edithelphandle = CommonScaleCreate("Button", "Help", 90, 1, 8, 3.5)
 	GUICtrlSetBkColor ($edithelphandle, $mymedblue)
 	CommonScaleCreate("Label", "Title", 30, 4, 4, 2)
 	$edithandletitle = CommonScaleCreate("Input", $selectionarray[$essub][$sEntryTitle], 37, 4, 50, 3)
+	If  $selectionarray[$essub][$simported] <> "" Then
+		$esimporthandle = CommonScaleCreate ("Label", "Imported", 55, 7.6, 12, 2.5, $SS_Center)
+		GUICtrlSetBkColor ($esimporthandle, $mylightgray)
+	EndIf
 	$edithandlefix   = CommonScaleCreate("Button", " Fix", 28.5, 6, 5, 3)
 	GUICtrlSetBkColor ($edithandlefix,   $myyellow)
 	CommonScaleCreate ("Label", "Type",  3, 4, 10, 3)
 	$edithandletype  = CommonScaleCreate("Combo", "", 13, 3.8, 13, 3, -1)
 	$typestringcust  = StringReplace ($typestring, $typeotherlin & "|", $typeotherlin & "||")
-	If $firmwaremode = "EFI" And $windowstypecount > 0 And $selectionarray [$essub] [$sOSType] <> "windows" _
-		Then $typestringcust = StringReplace ($typestringcust, "windows|", "")
 	If $osbits = 32 Or $cloverfound = "yes" Then $typestringcust = StringReplace ($typestringcust, "clover|",  "")
 	If FileGetSize ($usersectionfile) <> 0  Then $typestringcust = StringReplace ($typestringcust, $typeuser & "|", "")
 	GUICtrlSetData ($edithandletype, $typestringcust, $selectionarray[$essub][$sOSType])
@@ -193,30 +203,11 @@ Func EditSetup ($essub)
 	                    GUICtrlCreateUpdown($edithandlepause)
 	                    CommonScaleCreate("Label", "Hotkey", 3, 40, 8, 3)
 	$edithandlehotkey = CommonScaleCreate("Combo", "", 13, 39.5, 10, 3, -1)
-	                    CommonScaleCreate("Label", "", 1, 1, 1, 1)    ;dummy entries for Aotoit Bug
-	                    CommonScaleCreate("Label", "", 1, 1, 1, 1)    ;dummy entries for Aotoit Bug
-						CommonScaleCreate("Label", "", 1, 1, 1, 1)    ;dummy entries for Aotoit Bug
-	                    CommonScaleCreate("Label", "", 1, 1, 1, 1)    ;dummy entries for Aotoit Bug
-						CommonScaleCreate("Label", "", 1, 1, 1, 1)    ;dummy entries for Aotoit Bug
-	                    CommonScaleCreate("Label", "", 1, 1, 1, 1)    ;dummy entries for Aotoit Bug
-						CommonScaleCreate("Label", "", 1, 1, 1, 1)    ;dummy entries for Aotoit Bug
-	                    CommonScaleCreate("Label", "", 1, 1, 1, 1)    ;dummy entries for Aotoit Bug
-	$eshotkey     = $selectionarray[$essub][$sHotKey]
-	$eshotkeywork = $edithotkeywork
-	If Not StringInStr ($edithotkeywork, "|" & $eshotkey & "|") Then $eshotkeywork &= $eshotkey & "|"
-	GUICtrlSetData   ($edithandlehotkey, $eshotkeywork, $eshotkey)
-	EditHotKey       ($essub)
-	$edithandlewarn   = CommonScaleCreate("Label", "", 19, 54.5, 60, 9, $SS_CENTER)
-	$editpromptparm   = CommonScaleCreate("Label", "Linux Boot Parms",    43, 43, 12, 3)
-	$edithandlechknv  = CommonScaleCreate ("Checkbox", "Nvidia Support", 80, 43, 17, 3)
-	If $selectionarray [$essub] [$sFamily] = "linux-android" Then EditKernelGUI ($essub)
-	$editbuttonstand  = CommonScaleCreate("Button",   "Restore Standard Parms", 79, 54.5, 19, 3.5)
-	GUICtrlSetBkColor ($editbuttonstand, $mygreen)
-	$edithandledevice = CommonScaleCreate("Label", "", 3, 54.5, 60, 7)
-	$edithandleparm   = CommonScaleCreate("Edit", CommonParmCalc ($essub, "Previous", "Store"), 3, 46, 95, 8, "", "")
-	$editmessageparm  = CommonScaleCreate("Label", "Standard Parms Are In Use", 79, 54.5, 20, 3)
-	GUICtrlSetColor   ($editmessageparm, $mymedblue)
-	$focushandle = $edithandletitle
+	$eshotkey         = $selectionarray[$essub][$sHotKey]
+	$eshotkeyformat   = BaseFuncGetHotkeys ($eshotkey)
+	GUICtrlSetData    ($edithandlehotkey, $eshotkeyformat, $eshotkey)
+	EditHotKey        ($essub)
+	$focushandle      = $edithandletitle
 	$editbuttoncancel = CommonScaleCreate("Button", "Cancel", 10, 64, 10, 3.8)
 	$editbuttonapply  = CommonScaleCreate("Button", "Apply",  45, 64, 10, 3.8)
 	$editbuttonok     = CommonScaleCreate("Button", "OK",     80, 64, 10, 3.8)
@@ -242,7 +233,7 @@ Func EditRefresh ($ersub, $ercaller, $erhandle = "")
 		$focushandlelast = $focushandle
 	EndIf
 	EditPanelRefresh ($ersub)
-	If $selectionarray [$ersub] [$sOSType] = "windows" And $firmwaremode = "EFI" Then EditSetupWinOrder ($guishowit)
+	If $selectionarray [$ersub] [$sOSType] = $winstring Then EditSetupWinOrder ($guishowit)
 	GUISetBkColor    ($myorange, $edithandlegui)
 	GUISetState      (@SW_SHOW,  $edithandlegui)
 	;_ArrayDisplay ($selectionarray)
@@ -250,9 +241,12 @@ EndFunc
 
 Func EditCloseout ($ecsub, $ecwinorderhold)
 	CustomClearWorkFile ($ecsub)
-	$selectionarray = $editholdarray
-	$bcdwinorder    = $ecwinorderhold
-	$editnewentry   = 0
+	If IsArray ($editholdarray) Then $selectionarray = $editholdarray
+	$newstatushiber    = $prevstatushiber
+	$newstatuswinmenu  = $prevstatuswinmenu
+	$newwindisplayboot = $prevwindisplayboot
+	$bcdwinorder       = $ecwinorderhold
+	$editnewentry      = 0
 EndFunc
 
 Func EditSetupWinOrder ($eswstate = $guihideit)
@@ -293,22 +287,21 @@ Func EditCheckWinOrder ($ecwstatus, $ecwsub)
 EndFunc
 
 Func EditTitle ($etitlesub)
-	$edittitleok     = ""
-	$etstring = EditContentStringCheck ($edithandletitle, $edittitleok, 80)
+	$edittitleok  = ""
+	EditHotkey  ($etitlesub)
+	$etstring   = EditContentStringCheck ($edithandletitle, $edittitleok, $edittitlemax)
 	$selectionarray [$etitlesub][$sEntryTitle] = $etstring
-	EditHotkey ($etitlesub)
 EndFunc
 
 Func EditHotkey ($ehsub)
-	If StringLen ($selectionarray [$ehsub][$sEntryTitle]) > 46 Then
-		$selectionarray [$ehsub][$sHotKey] = ""
-		GUICtrlSetData  ($edithandlehotkey, $edithotkeywork, "no")
-		GUICtrlSetState ($edithandlehotkey, $guishowdis)
-	Else
-		$ehhotkey = GUICtrlRead ($edithandlehotkey)
-	    $selectionarray [$ehsub] [$sHotKey] = $ehhotkey
-		GUICtrlSetState ($edithandlehotkey, $guishowit)
-	EndIf
+	$edittitlemax = 75
+	$ehprevkey    = $selectionarray [$ehsub] [$sHotKey]
+	$ehhotkey     = GUICtrlRead ($edithandlehotkey)
+	$selectionarray [$ehsub] [$sHotKey] = $ehhotkey
+	GUICtrlSetState ($edithandlehotkey, $guishowit)
+	BaseFuncSetHotKey ($ehprevkey, "")
+	BaseFuncSetHotKey ($ehhotkey,  "no")
+	If $ehhotkey <> "no" Then $edittitlemax = 65
 EndFunc
 
 Func EditCheckDuplicates ($cdsub)
@@ -362,17 +355,17 @@ Func EditLoadSample ($elssub)
 	CommonFlashEnd    ("")
 EndFunc
 
+Func EditWinMulti ($wmsub)
+	$wmrc = MsgBox ($mbinfookcan, "", "Microsoft Only Allows A Single Windows Boot Manager" & @CR & @CR & _
+		'Click "OK" For More Information')
+	If $wmrc =$IDOK Then CommonHelp ("Windows Multi Boot")
+	$selectionarray [$wmsub][$sOSType] = ""
+EndFunc
+
 Func EditType($etsub)
 	If $selectionarray[$etsub][$sOSType] = "clover" Then _
 		GUICtrlSetData ($edithandletype, "|" & $typestringcust & "clover", "clover")
 	$edittype = GUICtrlRead ($edithandletype)
-	If $firmwaremode <> "EFI" And $edittype = "windows" Then
-		$edittype = ""
-		GUICtrlSetData ($edithandletype, "|" & $typestringcust, "")
-		$etmsg    = 'Windows Can Not Be Added To Grub2Win BIOS Menus' & @CR & @CR & 'Click "OK" For More Information'
-		$etrc     = MsgBox ($mbwarnokcan, '** This Is A BIOS System **', $etmsg)
-		If $etrc  = $IDOK Then CommonHelp ("BIOS System Boot")
-	EndIf
 	If $edittype = "" Then $edittype = "unknown"
 	$etstatus = "Previous"
 	If $edittype <> $selectionarray[$etsub][$sOSType] Then $etstatus = "New"
@@ -384,6 +377,7 @@ Func EditType($etsub)
 	$selectionarray [$etsub] [$sFamily] = $etfamily
 	$selectionarray [$etsub] [$sClass ] = $etclass
 	If $etstatus = "New" Then
+		If $windowstypecount > 0 And $edittype = $winstring Then EditWinMulti ($etsub)
 		$selectionarray [$etsub] [$sEntryTitle] = $ettitle
 		$etparmcalctype = "Held"
 		CommonSetDefault ($selectionarray [$etsub][$sBootParm], "Standard")
@@ -415,8 +409,9 @@ Func EditType($etsub)
 		EndIf
 		CommonArraySetDefaults ($etsub, "yes")
         $ethotkey = StringLower (StringLeft ($edittype, 1))
-		If StringInStr ($edithotkeywork, $ethotkey) Then
-			GUICtrlSetData ($edithandlehotkey, $edithotkeywork, $ethotkey)
+		$ethotstring = BaseFuncGetHotkeys ($ethotkey)
+		If StringInStr ($ethotstring, $ethotkey) Then
+			GUICtrlSetData ($edithandlehotkey, $ethotkey, $ethotkey)
 			EditHotKey ($etsub)
 		EndIf
 		If $selectionarray [$etsub] [$sFamily] = "linux-android" Then
@@ -450,11 +445,11 @@ Func EditSetAttribs ($esasub, $esabootby = $modehardaddress)
 	$esaiso         = $guihideit
 	$esafamily      = $selectionarray [$esasub][$sFamily]
 	If StringInStr ($esafamily, "linux") Then $esaparm = $guishowit
-	If $firmwaremode = "EFI" Then EditSetupWinOrder ($guihideit)
+	EditSetupWinOrder ($guihideit)
 	Select
 		Case $selectionarray [$esasub] [$sLoadBy] = $modecustom
 			$esaparm = $guihideit
-		Case $selectionarray [$esasub] [$sOSType] = "windows" And $firmwaremode = "EFI"
+		Case $selectionarray [$esasub] [$sOSType] = $winstring
 			EditSetupWinOrder ($guishowit)
 		Case $esabootby = $modechaindisk
 			$esaparm     = $guihideit
@@ -646,13 +641,15 @@ Func EditCheckErrors ($ecesub, $ececaller)
 	GUICtrlSetState  ($edithandlefix, $guihideit)
 	$eceprompt       = StringReplace (GUICtrlRead ($editpromptsrchr), "Root", "")
 	$ecebootby       = $selectionarray [$ecesub] [$sLoadBy]
+	EditTitle        ($ecesub)
 	Select
 		Case $selectionarray [$ecesub] [$sOSType] = "" Or $selectionarray [$ecesub] [$sOSType] = "unknown"
 			$ecewarnmessage  = 'Please select an OS Type.'
 			$ececolor        = $mypurple
 		Case $edittitleok = "length"
-			$ecewarnmessage  = 'The menu title must be 1 to 80 characters in length.' & @CR
-			$ecewarnmessage &= 'There are ' & StringLen ($ecetitle) & ' characters currently.' & @CR
+			$ecewarnmessage  = 'The menu title must be 1 to ' & $edittitlemax & ' characters in length'
+			If $selectionarray [$ecesub] [$sHotKey] <> "no" Then $ecewarnmessage &= ' when using hotkey.'
+			$ecewarnmessage &= @CR & 'There are ' & StringLen ($ecetitle) & ' characters currently.'  & @CR
 			$eceredmessage   = @CR & 'Click the yellow "Fix" button to remove the excess characters.'
 			GUICtrlSetState  ($edithandlefix, $guishowit)
 		Case $edittitleok = "invalchar"
@@ -727,3 +724,17 @@ Func EditBootFileMessage ($bfmsub, $bfmtype, ByRef $bfmcolor)
 	$bfmwarnmessage &= 'Then click the Apply button below.'
 	Return $bfmwarnmessage
 EndFunc
+
+Func EditHibernate ()
+	If CommonCheckBox ($edithandlehiber) Then
+		$newstatushiber = "enabled"
+	Else
+		$newstatushiber = "disabled"
+	EndIf
+EndFunc
+
+Func EditWinMenu ()
+	$newstatuswinmenu = GUICtrlRead ($edithandlewinmenu)
+	$newwindisplayboot  = "yes"
+	If $newstatuswinmenu = $bootmenunoshow Then $newwindisplayboot  = "no"
+EndFUnc

@@ -16,8 +16,7 @@ Func ImportRunGUI ()
 	$importfilepath     = ImportGetFile ()
 	If $importfilepath  = "" Then Return
 	$rgimportpath       = $importfilepath
-	$importfedorakernel = ""
-	If StringRight ($importfilepath, 5) = ".conf" Then $rgimportpath = ImportFedoraBoot ($importfilepath)
+	If StringRight ($importfilepath, 5) = ".conf" Then $rgimportpath = ImportLoaderConfig ($importfilepath)
 	$rgfilearray   = BaseFuncArrayRead ($rgimportpath, "InportRunGUI")
 	Dim $importarray [0] [$selectionfieldcount + 1]
 	Dim $importwork  [0] [$selectionfieldcount + 1]
@@ -90,6 +89,7 @@ Func ImportRunGUI ()
 					EndIf
 				Case Ubound ($importwork) = 0
 				Case CommonPrevParse ($rgrecordnohash, "linux")
+					$rglinfind   = "yes"
 					$importwork [0] [$sClass]      = "custom"
 					$importwork [0] [$sBootParm]   = GetPrevBootParm ()
 					$importwork [0] [$sKernelName] = $parseresult1
@@ -152,7 +152,7 @@ Func ImportSetup ()
 	Dim $handleimportcheck [$islimit]
 	Dim $importstatus      [$islimit]
 	;_ArrayDisplay ($linuxpartarray, "Part")
-	;_ArrayDisplay ($importarray, "Import")
+	;_ArrayDisplay ($importarray,   "Import " & $islimit)
 	For $islinecount = 0 To $islimit - 1
 		$isvert     = ($islinecount * 15) + 5
 		$isgroup    = $importarray [$islinecount] [$sEntryTitle]
@@ -179,9 +179,8 @@ Func ImportSetup ()
 		If $importtype = "Linux"  Then
 			$isvert += 3
 			$ishandleuuid =   CommonScaleCreate ("Label",    $isbootdisk & "     " & $isfull, 15, $isvert - 1,   75,  3)
-		Else
-			GUICtrlSetState   ($handleimportcheck [$islinecount], $GUI_CHECKED)
 		EndIf
+		If $islimit = 1 Then  GUICtrlSetState   ($handleimportcheck [$islinecount], $GUI_CHECKED)
 							  CommonScaleCreate ("Label",    "Kernel Name=" & $iskern & $isinit,           15, $isvert + 1.8, 75,  3)
 		If $isparm <> "" Then CommonScaleCreate ("Label",    "Parm="        & $isparm,                     15, $isvert + 4,   70,  4.5)
 															 GUICtrlSetBkColor ($ishandlegroup, $myblue)
@@ -201,11 +200,13 @@ EndFunc
 
 Func ImportParseLinux ($plrecord, $plsearch)
 	$plout   = "     "
+	$plefi   = ""
+	If StringLeft ($plsearch, 5) = "UUID=" And StringLen ($plsearch) < 20 Then $plefi = "yes"
 	$plarray = StringSplit ($plrecord, " ")
 	If Not @error Then
 		For $plsub = 1 To Ubound ($plarray) -1
 			$plparm = $plarray [$plsub]
-			If StringInStr ($plparm, "root=") Or StringInStr ($plparm, "boot=") Then _
+			If $plefi = "" And (StringInStr ($plparm, "root=") Or StringInStr ($plparm, "boot=")) Then _
 				$plparm = StringLeft ($plparm, 5) & $plsearch
 			$plout &= $plparm & "  "
 		Next
@@ -222,7 +223,7 @@ Func ImportParseSearch ($psrecord, ByRef $pslinarg)
 	$pslinarg = $psfind
 	;_ArrayDisplay ($psarray)
 	Select
-		Case StringInStr ($psrecord, "search.fs_file")  Or StringInStr ($psrecord, " --file ")    Or StringInStr ($psrecord, " -f ")
+		Case StringInStr ($psrecord, "search.file")     Or StringInStr ($psrecord, " --file ")    Or StringInStr ($psrecord, " -f ")
 			$psfind   = "UUID=$g2wprobeuuid "
 		Case StringInStr ($psrecord, "search.fs_uuid")  Or StringInStr ($psrecord, " --fs-uuid ") Or StringInStr ($psrecord, " -u ")
 			$psfind   = "UUID="  & $psfind  & " "
@@ -289,7 +290,7 @@ Func ImportGenCode ($gcnumber)
 	;_ArrayDisplay ($importarray, "ImportArray")
 	;MsgBox ($mbontop, "Apply " & $gcnumber, $importarray [$gcnumber] [$sEntryTitle])
 	Dim $gcarray [0]
-	$gctitlestart = "Imported-" & StringLeft ($importarray [$gcnumber] [$sEntryTitle], 91)
+	$gctitlestart = StringLeft ($importarray [$gcnumber] [$sEntryTitle], 91)
 	$gctitlestart = BaseFuncRemoveCharSpec ($gctitlestart)
 	$gctitle      = $gctitlestart
 	For $gcdupcount = 1 To 9
@@ -315,13 +316,7 @@ Func ImportGenCode ($gcnumber)
 			$gcarg = "$g2wprobeuuid"
 		EndIf
 		_ArrayAdd ($gcarray,"     getpartition  " & $gctype & " " & $gcarg & "  root")
-		If $importfedorakernel = "" Then
-			_ArrayAdd ($gcarray,"     g2wsetprefix imported")
-		Else
-			_ArrayAdd ($gcarray,"     search.file   " & $importfedorakernel & "  bootpart")
-			_ArrayAdd ($gcarray,"     echo ** The boot partition is $bootpart")
-			_ArrayAdd ($gcarray,"     echo ** The root partition is $root")
-		EndIf
+		_ArrayAdd ($gcarray,"     g2wsetprefix imported")
 	EndIf
 	For $gcsub = 0 To Ubound ($importcode) - 1
 		If $importcode [$gcsub] [0] <> $gcnumber Then ContinueLoop
@@ -337,6 +332,7 @@ Func ImportGenCode ($gcnumber)
 		_ArrayAdd ($gcarray, $gccode)
 	Next
 	_ArrayAdd ($gcarray, "     echo '       ** Ready To Boot **'")
+	If Ubound ($importloaderarray) > 0 Then $gcarray = $importloaderarray
 	BaseFuncArrayWrite ($custconfigstemp & "\" & $gccustname, $gcarray, $FO_OVERWRITE, "", 0)
 	$importarray [$gcnumber] [$sFamily]      = "custom"
 	$importarray [$gcnumber] [$sBootParm]    = $nullparm
@@ -348,7 +344,8 @@ Func ImportGenCode ($gcnumber)
 	_ArrayAdd ($selectionarray, "")
 	$gctargetsub = Ubound ($selectionarray) - 1
 		For $gcfield = 1 To $selectionfieldcount - 1
-		$selectionarray [$gctargetsub] [$gcfield] = $importarray [$gcnumber] [$gcfield]
+		$selectionarray [$gctargetsub] [$gcfield]   = $importarray [$gcnumber] [$gcfield]
+		$selectionarray [$gctargetsub] [$sImported] = "imported"
 	Next
 	;_ArrayDisplay ($gcarray, "GC " & $gcnumber & " " & $gccustname)
 EndFunc
@@ -362,43 +359,61 @@ Func ImportGetFile ()
 	Return $importfilepath
 EndFunc
 
-Func ImportFedoraBoot ($fbimportfilepath)
-	$fbfilearray = BaseFuncArrayRead ($fbimportfilepath, "InportRunFedoraBoot")
-	$fbtype      = ""
-	$fbversion   = ""
-	Dim $fboutarray [6]
-	For $fbinsub = 0 To Ubound ($fbfilearray ) - 1
-		$fbrec = $fbfilearray [$fbinsub]
-		$fbrec = StringStripWS ($fbrec, 7)
+Func ImportLoaderConfig ($lcimportfilepath)
+	$lcfilearray = BaseFuncArrayRead ($lcimportfilepath, "InportLoaderConfig")
+	Local $lcmenuentry, $lctype, $lcversion, $lckernel, $lcinitrd, $lcoptions
+	Dim $lcoutarray [0]
+	For $lcinsub = 0 To Ubound ($lcfilearray ) - 1
+		$lcrec = $lcfilearray [$lcinsub]
+		$lcrec = StringStripWS ($lcrec, 7)
 		Select
-			Case StringLeft ($fbrec, 1) = "#"
+			Case StringLeft ($lcrec, 1) = "#"
 				ContinueLoop
-			Case StringLeft ($fbrec, 6) = "title "
-				$fboutarray [1] = "menuentry '" & StringTrimLeft ($fbrec, 6) & "' {"
-			Case StringLeft ($fbrec, 8) = "version "
-				$fbversion      = StringTrimLeft ($fbrec, 8)
-			Case StringLeft ($fbrec, 6) = "linux "
-				$importfedorakernel = StringTrimLeft ($fbrec, 6)
-				$fboutarray [3] = "linux  ($bootpart)"  & $importfedorakernel
-			Case StringLeft ($fbrec, 7) = "initrd "
-				$fboutarray [4] = "initrd  ($bootpart)" & StringTrimLeft ($fbrec, 7)
-			Case StringLeft ($fbrec, 8) = "options "
-				$fbrec = StringReplace ($fbrec, " quiet", " verbose")
-				$fboutarray [3] &= "  " & StringTrimLeft ($fbrec, 8)
-				$fbopttype  = StringSplit ($fbrec, "=")
-				If Not @error And Ubound ($fbopttype) > 3 Then $fbtype = $fbopttype [2]
-				;_ArrayDisplay ($fbopttype,  "Type " & $fbtype)
-				$fboptparms = StringSplit ($fbopttype [3], " ")
-				If Not @error And Ubound ($fbopttype) > 0 Then $fbsearcharg = $fboptparms [1]
-				$fboutarray [2] = "search --fs-" & StringLower ($fbtype) & "  " & $fbsearcharg
-				;_ArrayDisplay ($fboptparms, "Parms")
+			Case StringLeft ($lcrec, 6) = "title "
+				$lcmenuentry  = "menuentry '" & StringTrimLeft ($lcrec, 6) & "' {"
+			Case StringLeft ($lcrec, 8) = "version "
+				$lcversion    = StringTrimLeft ($lcrec, 8)
+			Case StringLeft ($lcrec, 6) = "linux "
+				$lckernel     = StringTrimLeft ($lcrec, 6)
+			Case StringLeft ($lcrec, 7) = "initrd "
+				$lcinitrd     = StringTrimLeft ($lcrec, 7)
+			Case StringLeft ($lcrec, 8) = "options "
+				$lcoptions = StringReplace  ($lcrec, " quiet", " verbose")
+				$lcoptions = StringTrimLeft ($lcoptions, 8)
+				$lcopttype = StringSplit ($lcrec, "=")
+				If Not @error And Ubound ($lcopttype) > 3 Then $lctype = StringLower ($lcopttype [2])
+				;_ArrayDisplay ($lcopttype,  "Type " & $lctype)
+				$lcoptparms = StringSplit ($lcopttype [3], " ")
+				If Not @error And Ubound ($lcopttype) > 0 Then $lcsearcharg = $lcoptparms [1]
+				;_ArrayDisplay ($lcoptparms, "Parms")
 			Case Else
 				ContinueLoop
 		EndSelect
 	Next
-	$fboutarray [5] = "}"
-	$fboutfile      = $windowstempgrub & "\fedora.temp.cfg"
-	;_ArrayDisplay ($fboutarray, $importfedorakernel)
-	BaseFuncArrayWrite ($fboutfile, $fboutarray)
-	Return $fboutfile
+	$lckernellength  = StringLen        ($lckernel)
+	$lckernelgeneric = BaseFuncPadRight (StringReplace ($lckernel, "-" & $lcversion, ""), $lckernellength)
+	$lcinitrdgeneric = StringReplace    ($lcinitrd, "-" & $lcversion, "")
+	_ArrayAdd  ($lcoutarray, "getpartition  " & $lctype          & " " & $lcsearcharg & " root")
+	_ArrayAdd  ($lcoutarray, "search.file   " & $lckernel        & "  bootpart")
+	_ArrayAdd  ($lcoutarray, "search.file   " & $lckernelgeneric & "  genericbootpart")
+	_ArrayAdd  ($lcoutarray, "if [ $? = 0 ] ; then")
+	_ArrayAdd  ($lcoutarray, "    set bootpart=$genericbootpart")
+	_ArrayAdd  ($lcoutarray, "    echo ** Booting the generic kernel")
+	_ArrayAdd  ($lcoutarray, "    linux  ($bootpart)" & $lckernelgeneric & "  " & $lcoptions)
+    _ArrayAdd  ($lcoutarray, "    initrd ($bootpart)" & $lcinitrdgeneric)
+	_ArrayAdd  ($lcoutarray, "else")
+    _ArrayAdd  ($lcoutarray, "    echo ** Booting the standard kernel")
+	_ArrayAdd  ($lcoutarray, "    linux  ($bootpart)" & $lckernel        & "  " & $lcoptions)
+	_ArrayAdd  ($lcoutarray, "    initrd ($bootpart)" & $lcinitrd)
+	_ArrayAdd  ($lcoutarray, "fi")
+    _ArrayAdd  ($lcoutarray, "if [ ! $bootpart = $root ] ; then echo ** The boot partition is $bootpart ; fi")
+    _ArrayAdd  ($lcoutarray, "echo ** The root partition is $root")
+    _ArrayAdd  ($lcoutarray, "echo '       ** Ready To Boot **'")
+    $importloaderarray = $lcoutarray
+	_ArrayInsert ($lcoutarray, 0, $lcmenuentry)
+	_ArrayAdd    ($lcoutarray, "}")
+	$lcoutfile = $windowstempgrub & "\loader.temp.cfg"
+	BaseFuncArrayWrite ($lcoutfile, $lcoutarray, $FO_OVERWRITE, "", 0)
+	;_ArrayDisplay ($lcoutarray, $lckernelgeneric & " " & $lcinitrdgeneric)
+	Return $lcoutfile
 EndFunc

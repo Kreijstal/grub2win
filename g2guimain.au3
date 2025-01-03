@@ -3,6 +3,7 @@
 
 Func MainRunGUI()
 	CommonCheckRestrict ()
+	If CommonParms ($parmquiet) Then Return 0
 	MainCheckBootMenu  ()
 	If $langfound = "no" And $langselectedcode = "" Then LangWarn ()
 	MainGUISetup   ()
@@ -33,7 +34,7 @@ Func MainRunGUI()
 			Case $mrghandle <> $handlemaingui
 			Case $mrgstatus = $GUI_EVENT_CLOSE Or $mrgstatus = $buttoncancel
 				FileCopy ($usersectionorig, $usersectionfile, 1)
-				ThemeRestoreHold ()
+				WallpaperRestoreHold ()
 				Return 1
 			Case $mrgstatus = $GUI_EVENT_PRIMARYUP
 				If CommonCheckUpDown ($updowngt, $timeoutgrub, 0, 999) Then MainGUIRefresh ()
@@ -81,19 +82,30 @@ Func MainRunGUI()
 				$bcdwinmenuhold = $bcdwinorder
 				SelectionRunGUI()
 				MainGUIRefresh()
+			Case $mrgstatus = $buttonwinopt
+				SelectionSequenceUpdate ()
+				;_ArrayDisplay ($selectionarray, "Before " & $editnewentry)
+				EditRunGUI ($selectionwinentry, $handlemaingui)
+				_ArraySort ($selectionarray, 0, 0, 0, $sSortSeq)
+				SelectionSequenceUpdate ()
+				CommonSetupDefault      ()
+				;_ArrayDisplay ($selectionarray, "After " & $editnewentry)
+				MainGUIRefresh ()
+				ContinueLoop
 			Case $mrgstatus = $handlegrubtimeout Or $mrgstatus = $handlewintimeout
 				MainRefreshTimeout ()
 				MainGUIRefresh     ()
 			Case $mrgstatus = $checkshortcut
 				MainRefreshShortcut ()
 				MainGUIRefresh      ()
-			Case $mrgstatus = $screenpreviewhandle Or $mrgstatus = $screenshothandle
-				ThemeEdit ()
+			Case $graphset <> $textstring And ($mrgstatus = $screenpreviewhandle Or $mrgstatus = $screenshothandle)
+				WallpaperEdit ()
 				MainGUIRefresh()
 			Case $mrgstatus = $langhandle
 				MainGUIRefresh()
 			Case $mrgstatus = $graphhandle
-				MainGUIRefresh()
+				MainGraph      ()
+				MainGUIRefresh ()
 			Case $mrgstatus = $defaulthandle
 				MainRefreshDefault ()
 				MainGUIRefresh  ()
@@ -105,13 +117,13 @@ EndFunc
 Func MainGUISetup()
 	$handlemaingui = CommonScaleCreate ("GUI", $headermessage & "      L=" & $langheader, -1, -1, 100, 100,-1)
 	GUISetBkColor  ($mylightgray, $handlemaingui)
-	$origgraphset   = $graphset
 	$origlangset    = $langfullselector
-	If $timeoutwin  < $shortbootoff Then $timewinenabled = "yes"
 	If $langauto    = "yes" Then $origlangset = $langautostring
 	$origdefault    = $defaultset
-	$mgbootstyle    = "BCD"
-	If $bootos      = $xpstring Then $mgbootstyle = $xptargetini
+	$wallpaperfont      = SettingsGet ($setwallpaperfont)
+	$wallpaperfontsave  = $wallpaperfont
+	$wallpaperfontauto  = SettingsGet ($setwallpaperfontauto)
+	$wallpaperautosave  = $wallpaperfontauto
 	$mainhelphandle = CommonScaleCreate ("Button", "Help",                1,   1.5,  8, 3.5)
 	GUICtrlSetBkColor ($mainhelphandle, $mymedblue)
 	$mainresthandle = CommonScaleCreate ("Button", "Restore",            12.0, 1.5,  8, 3.5)
@@ -120,7 +132,6 @@ Func MainGUISetup()
 	GUICtrlSetBkColor ($mainsynhandle, $mymedblue)
 	$mainupdhandle  = CommonScaleCreate ("Button", "Updates",            33.7, 1.5,  7, 3.5)
 	GUICtrlSetBkColor ($mainupdhandle, $mymedblue)
-	$mgbiosbump     = 14
 	If $firmwaremode = "EFI" Or CommonParms ($parmefiaccess) Then
 		$buttonrunefi   = CommonScaleCreate ("Button",  $runpartops,        9, 36.5, 22, 4)
 		If $firmwaremode = "EFI" Then
@@ -128,16 +139,14 @@ Func MainGUISetup()
 			$buttondefault  = CommonScaleCreate ("Button", ""                       ,     7, 49.5, 26, 4)
 			$buttonreboot   = CommonScaleCreate ("Button", "Click To Reboot Your Machine " & @CR & "For EFI Firmware Setup", 9, 68, 22, 7, $BS_MULTILINE)
 		EndIf
-		$mgbiosbump = 0
 	EndIf
-
-	$mainloghandle   = CommonScaleCreate  ("List", "",                      2,    7 + $mgbiosbump, 41,  29, 0x00200000, "")
-                       GUICtrlSetBKColor ($mainloghandle, $mylightgray)
+	$mainloghandle   = CommonScaleCreate   ("List", "",                      2,    7, 41,  29, 0x00200000, "")
+                       GUICtrlSetBKColor   ($mainloghandle, $mylightgray)
 	$promptd = CommonScaleCreate("Label", "Boot default OS", 44, 62.7, 20, 3)
 	CommonSetupDefault ()
 	$promptg = CommonScaleCreate("Label", "Boot graphics mode", 44, 70.3, 20, 3)
-	$graphhandle = CommonScaleCreate("Combo", "", 58, 70, 39, 15, -1)
-	GUICtrlSetData ($graphhandle, $autostring & "|" & $graphstring, $graphset)
+	$graphhandle = CommonScaleCreate ("Combo", "", 58, 70, 39, 15, -1)
+	GUICtrlSetData ($graphhandle, $autostring & "|" & $textstring & "|"& $graphstring, $graphset)
 	$promptl = CommonScaleCreate("Label", "Boot locale language", 44, 76.7, 20, 3)
 	$langhandle = CommonScaleCreate ("Combo", "", 58, 76.3, 39, 15, -1)
 	GUICtrlSetData ($langhandle, $langcombo, $origlangset)
@@ -146,17 +155,18 @@ Func MainGUISetup()
 	$handlegrubtimeout = CommonScaleCreate ("Checkbox", "Grub default timeout",          4, 85.5, 15,   3)
 	$updowngt = CommonScaleCreate("Input", $timeoutgrub,                          7, 88.5,  4.5, 3, $ES_RIGHT)
 	$labelgt1 = CommonScaleCreate("Label", "seconds",                           12, 88.5,  8,   3)
-	$buttonpartlist = CommonScaleCreate("Button",   "Partition List",         29.5, 86,   10,  3.5)
+	$buttonpartlist   = CommonScaleCreate("Button",   "Partition List",         29.5, 86,   10,  3.5)
 	GUICtrlSetBkColor ($buttonpartlist, $mymedblue)
-	$buttonsysinfo  = CommonScaleCreate("Button",   "System Info",              47, 86,   10,  3.5)
+	$buttonsysinfo    = CommonScaleCreate("Button",   "System Info",              47, 86,   10,  3.5)
 	GUICtrlSetBkColor ($buttonsysinfo, $mymedblue)
-	$buttondiag     = CommonScaleCreate("Button",   "Diagnostics",              64, 86,   10,  3.5)
+	$buttondiag       = CommonScaleCreate("Button",   "Diagnostics",              64, 86,   10,  3.5)
 	GUICtrlSetBkColor ($buttondiag,    $mymedblue)
-	$mgtimeoutwin = $timeoutwin
-	If $mgtimeoutwin >= $shortbootoff Then $mgtimeoutwin = 10
-	$handlewintimeout = CommonScaleCreate("Checkbox", "Windows boot timeout", 80, 85.5,  18,  3)
-	$updownbt = CommonScaleCreate("Input", $mgtimeoutwin,               84, 88.5,  4.5, 3, $ES_RIGHT)
-	$labelbt2 = CommonScaleCreate("Label", "seconds",                 89, 88.5,  30,  3)
+	$updownbt = CommonScaleCreate("Input", $timeoutwin,      84, 88.5, 4.5, 3, $ES_RIGHT)
+	$labelbt2 = CommonScaleCreate("Label", "seconds",        89, 88.5,  30, 3)
+	If Ubound ($bcdwinorder) > 1 Or $winmenupolicy = "standard" Then $newwindisplayboot = "yes"
+	If $bootos = $xpstring Then $newwindisplayboot = ""
+	If $newwindisplayboot = "yes" Then	GUICtrlSetData  ($updownbt, $timeoutwin)
+	$buttonwinopt    = CommonScaleCreate("Button", "Windows" & @CR & "Boot Menu Options", 80.5, 82,  15, 5.5, $BS_MULTILINE)
 	$buttoncancel    = CommonScaleCreate("Button", "Cancel", 11, 95, 10, 3.5)
 	$buttonselection = CommonScaleCreate("Button", "Manage Boot Menu", 43, 95, 18, 3.5)
 	GUICtrlSetBkColor($buttonselection, $myyellow)
@@ -166,25 +176,22 @@ EndFunc
 Func MainGUIRefresh ($grtrigger = "yes")
 	GUISetState         (@SW_RESTORE, $handlemaingui)
 	If $grtrigger       <> "" Then $backuptrigger = "yes"
-	ThemeMainScreenShot ()
+	WallpaperMainScreenShot ()
+	;MsgBox ($mbontop, "Name", $wallpapergraphname)
 	CommonDisplayLog    ()
 	CommonCheckUpDown   ($updowngt, $timeoutgrub, 0, 999)
-	CommonCheckUpDown   ($updownbt, $timeoutwin,  0,  99)
+	CommonCheckUpDown   ($updownbt, $timeoutwin,  2,  99)
 	$timeoutok    = ""
 	$grlanghold   = ""
-	If $timeoutwin   = 0 Then                              $timeoutok = "Windows boot"
 	If $timeoutgrub  < 2 And $timegrubenabled = "yes" Then $timeoutok = "Grub"
 	MainRefreshLanguage()
 	MainRefreshDefault ()
-	$graphset = GUICtrlRead ($graphhandle)
 	MainCheckErrors ()
 	$grdispwin  = $guishowit
 	$grdispgrub = $guishowit
 	GUICtrlSetState($promptd, $grdispgrub)
 	GUICtrlSetState($defaulthandle, $grdispgrub)
 	GUICtrlSetState($promptbt, $grdispgrub)
-	GUICtrlSetState($promptg, $grdispgrub)
-	GUICtrlSetState($graphhandle, $grdispgrub)
 	GUICtrlSetState($promptl, $grdispgrub)
 	$grlanghold = $grdispgrub
 	If $timegrubenabled = "yes" Then
@@ -192,25 +199,10 @@ Func MainGUIRefresh ($grtrigger = "yes")
 	Else
 		GUICtrlSetState ($handlegrubtimeout, $GUI_UNCHECKED)
 	EndIf
-	If $timewinenabled = "yes" Then
-		GUICtrlSetData  ($updownbt, $timeoutwin)
-		GUICtrlSetState ($handlewintimeout, $GUI_CHECKED)
-	Else
-		GUICtrlSetState ($handlewintimeout, $GUI_UNCHECKED)
-	EndIf
 	MainRefreshTimeout ()
 	GUICtrlSetState   ($promptt,  $grdispwin)
 	GUICtrlSetState   ($handlewintimeout, $grdispwin)
 	GUICtrlSetBkColor ($buttonselection, $myyellow)
-	If StringLeft ($graphset, 7) = "800x600" Then
-		CommonThemePutOption ("name", $notheme, $themetempoptarray)
-        ThemeBuildScreenShot ($notheme)
-		ThemeMainScreenShot  ()
-	ElseIf CommonThemeGetOption ("name") = $notheme Then
-		GUICtrlSetState($promptg,     $GUI_HIDE + $GUI_ENABLE)
-		GUICtrlSetState($graphhandle, $GUI_HIDE + $GUI_ENABLE)
-		$graphset = "No"
-	 EndIf
 	GUISetState (@SW_SHOW, $handlemaingui)
 EndFunc
 
@@ -246,20 +238,22 @@ Func MainRefreshTimeout ()
 		GUICtrlSetState ($labelgt1, $guihideit)
 		$timegrubenabled = "no"
 	EndIf
-	If CommonCheckBox ($handlewintimeout) Then
+	If $newwindisplayboot = "yes" Then
+		;MsgBox ($mbontop, "Wintime Checked", $timeoutwin & @CR & $timelimitwin)
 		GUICtrlSetState ($updownbt, $guishowit)
 		BaseFuncGUICtrlDelete ($arrowbt)
 		$arrowbt = GUICtrlCreateUpdown ($updownbt, $UDS_ALIGNLEFT)
 		GUICtrlSetState ($arrowbt,  $guishowit)
 		GUICtrlSetState ($labelbt2, $guishowit)
+		$timeoutwin     = GUICtrlRead  ($updownbt)
 		$timewinenabled = "yes"
 	Else
+		;MsgBox ($mbontop, "Wintime Not Checked", $timeoutwin & @CR & $timelimitwin)
 		GUICtrlSetState ($updownbt, $guihideit)
 		GUICtrlSetState ($arrowbt,  $guihideit)
 		GUICtrlSetState ($labelbt2, $guihideit)
 		$timewinenabled = "no"
 	EndIf
-	;MsgBox ($mbontop, "Time", $timewinenabled)
 EndFunc
 
 Func MainRefreshDefault ()
@@ -354,7 +348,11 @@ Func MainCheckErrors()
 			EndIf
 			If Not StringInStr ($bcdorderarray [0] [$bPath], $efibootmanstring) Then
 				$cecolor = $myorange
-				$cewarn  =  'Caution - Grub2Win is not set'     & @CR
+				If StringInStr ($bcdorderarray [0] [$bPath], $winbootmgr) Then
+						$cewarn  =  'Caution - The Microsoft bootmanager is set     '     & @CR
+					Else
+						$cewarn  =  'Caution - Grub2Win is not set'     & @CR
+				EndIf
 				$cewarn &= 'as your default EFI bootmanager'   & @CR
 				GUICtrlSetData    ($buttondefault, 'Set Grub2Win As The Default')
 				GUICtrlSetBkColor ($buttondefault, $myyellow)
@@ -374,11 +372,10 @@ Func MainCheckErrors()
 			$cewarn &= 'may prevent menus from displaying'
 			$cecolor = $myyellow
 		Case $osfound = "" And $cloverfound = ""
-			$cewarn =  'To complete Grub2Win configuration'          & @CR
-			$cewarn &= 'you must now add or import your OS entries.' & @CR & @CR
+			$cewarn =  ' **  Windows is ready to go in Grub2Win  **'         & @CR
+			$cewarn &= 'you should now add or import your other OS entries.' & @CR & @CR
 			$cewarn &= 'Click the yellow "Manage Boot Menu" button below.'
-			$cecolor  = $myred
-			If $oswarned <> "" Then $cecolor = $myorange
+			$cecolor = $myorange
 			$oswarned = "yes"
 		Case $cecolor = ""
 			Return
@@ -396,7 +393,7 @@ Func MainCheckBootMenu ()
 	If SettingsGet ($setwarnedbootmenu) <> $setno Then Return
 	$cbdiff = TimeJulStamp ($bootstamp) - TimeJulStamp ($latestsetup)
 	If $cbdiff < 0 Or ($upticks / 3600000) > 24 Then Return
-	If Not FileExists ($screenshotfile) Then ThemeBuildScreenShot ()
+	If Not FileExists ($screenshotfile) Then WallpaperBuildScreenShot ()
 	$cbhandle = CommonScaleCreate ("GUI", "Boot Menu Check", -1, -1, 60, 80, -1)
 	GUISetBkColor  ($myyellow, $cbhandle)
 	$cbmsg  = "We noticed that your machine was recently booted on " & @CR & StringTrimLeft ($bootstamp, 17) & "."
@@ -438,4 +435,19 @@ Func MainPartList ()
 	CommonFlashEnd      ("", 0)
 	UtilPartitionReport ()
 	ShellExecute        ($notepadexec, $partlistfile, "", "", @SW_MAXIMIZE)
+EndFunc
+
+Func MainGraph ()
+	$graphset   = GUICtrlRead ($graphhandle)
+	If $graphset = $textstring Then
+		CommonWallpaperPutOption ("name", $nowallpaper, $wallpapertempoptarray)
+		WallpaperMainScreenShot  ()
+		Return
+	EndIf
+	If $graphset <> $textstring And CommonWallpaperGetOption ("name") = $nowallpaper Then
+		If $wallpapergraphname = "" Then $wallpapergraphname = "basic"
+		CommonWallpaperPutOption ("name", $wallpapergraphname, $wallpapertempoptarray)
+		WallpaperMainScreenShot  ()
+	EndIf
+	WallpaperGraphGetAuto   ($wallpaperfont)
 EndFunc

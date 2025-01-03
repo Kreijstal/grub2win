@@ -17,9 +17,9 @@ Func SetupMain ()
 	EndIf
 	CommonPrepareAll     ()
 	CommonCheckRestrict  ()
+	DirectPreCheck       ()
 	SetupParms           ()
 	SetupCheckBuild      ()
-	SecureAuth           ("", $todayjul)
 	If  CommonParms      ($parmautoinstall) Then
 		SetupAuto  ()
 	Else
@@ -31,10 +31,8 @@ Func SetupParms ()
 	If CommonParms ($parmdrive)       Then $setupvaluedrive      = $parmvalue
 	If CommonParms ($parmshortcut)    Then $setupvalueshort      = $parmvalue
 	If CommonParms ($parmautoresdir)  Then $setupvalueautoresdir = $parmvalue
-	If CommonParms ($parmcleanupdir)  Then
-		$setupvaluecleanupdir = $parmvalue
-		If Not CommonParms ($parmquiet) Then SetupCheckExe ()
-	EndIf
+	If CommonParms ($parmcleanupdir)  Then $setupvaluecleanupdir = $parmvalue
+	If Not CommonParms ($parmquiet)   Then SetupCheckExe ()
 EndFunc
 
 Func SetupCheckBuild ()
@@ -69,7 +67,7 @@ Func SetupAuto ()
 	CommonWriteLog       ()
 	CommonSetupCloseOut  ()
 	If Not CommonParms   ($parmquiet) Then MsgBox ($mbontop, "", "Grub2Win Setup Is Complete", 10)
-	BaseFuncCleanupTemp    ("SetupAuto")
+	BaseFuncCleanupTemp  ("SetupAuto")
 EndFunc
 
 Func SetupByGUI ()
@@ -85,14 +83,14 @@ Func SetupByGUI ()
 			Case $sgstatus = "" Or $sgstatus = 0
 			Case $sgstatus = $setupbuttoncancel Or $sgstatus = $setupbuttonclose Or $sgstatus = $GUI_EVENT_CLOSE
 				If $setupstatus <> "complete" Then
-					FileDelete    ($downloadjulian)
 					CommonWriteLog ("** Setup was cancelled by the user **")
 					If $setuperror <> "" Then $setuperror = "* Setup Cancelled" & $setuperror
 				EndIf
 				If $sgstatus = $setupbuttoncancel Or $sgstatus = $GUI_EVENT_CLOSE Then
 					BaseFuncGuiDelete   ($setuphandlegui)
-					CommonStatsBuild  ("SetupCancel", "")
-					CommonStatsPut    ()
+					DirectRemoveLetter  ($directdisk, $directpart, $directletter, "yes")
+					CommonStatsBuild    ("SetupCancel", "")
+					CommonStatsPut      ()
 					BaseFuncCleanupTemp ("SetupCancel")
 				EndIf
 				ExitLoop
@@ -125,7 +123,7 @@ Func SetupByGUI ()
 	$sgbasepid  = ""
 	$sgdelsetup     = CommonCheckBox ($setuphandledel)
 	$sgrungrub      = CommonCheckBox ($setuphandlerun)
-	BaseFuncGuiDelete      ($setuphandlegui)
+	BaseFuncGuiDelete    ($setuphandlegui)
 	CommonFlashStart     ("**  Setup Is Cleaning Up  **", "", 1000, "")
 	CommonSetupCloseOut  ()
 	$sgtype     = "Setup"
@@ -136,7 +134,7 @@ Func SetupByGUI ()
 	CommonFlashEnd       ("")
 	If $sgrungrub And $setupstatus = "complete" Then
 		CommonHotKeys    ("off")
-		$sgbasepid = Run ($masterexe)
+		$sgbasepid = Run ($masterexe, $workdir)
 		CommonEnqueue    ("", "Grub2Win Will Start In A Moment", 1000, "")
 	Else
 		CommonStatsPut ()
@@ -195,7 +193,10 @@ Func SetupCheckEFI ()
 		$setuprefreshefi = "yes"
 		$ssefilvlmsg     = "Your GNU Grub EFI modules will be updated from level  " & $efileveldeployed & "  to level  " & $basefifromrelease
 	EndIf
-	If $efileveldeployed = $unknown Then $ssefilvlmsg = "The GNU Grub level " & $basefifromrelease & " modules will be installed to your EFI partition"
+	If $efileveldeployed = $unknown Or ($winefiletter <> "" And Not FileExists ($winefiletter & "\efi\grub2win")) Then
+		$setuprefreshefi = "yes"
+		$ssefilvlmsg = "The GNU Grub level " & $basefifromrelease & " modules will be installed to your EFI partition"
+	EndIf
 	GUICtrlSetData     ($setuphandleefimsg, $ssefilvlmsg)
 	GUICtrlSetState    ($setuphandleefimsg, $guishowit)
 EndFunc
@@ -229,16 +230,15 @@ Func SetupBootEFI ()
 EndFunc
 
 Func SetupBootBIOS ()
-	CommonWriteLog ()
+	CommonWriteLog ("", 2)
 	CommonWriteLog ("Starting the " & $systemmode & " boot code installation.")
 	$sbbrc = ""
 	If $bootos = $xpstring Then
-		XPSetup       ()
-		XPGetPrevious ()
-		$sbbrc = XPUpdate     (30)
+			     XPCleanupBoot   ()
+		$sbbrc = XPCreateManager ()
 	Else
-		;BCDGetPreviousBIOS ()
-		$sbbrc = BCDSetupBIOS (30)
+		BCDCleanup      ()
+		DirectSetupBIOS ($sbbrc)
 	EndIf
 	If $sbbrc <> 0 Then SetupError ("** The BIOS boot code installation failed **", $sbbrc)
     CommonWriteLog ("The " & $systemmode & " boot code installation is complete.")
@@ -328,13 +328,14 @@ Func SetupCheckErrors ($scconfstatus)
 		GUICtrlSetData    ($setuphandlewarn,    $scmsg)
 		GUICtrlSetBKColor ($setuphandlewarn,    $scwarncolor)
 		GUICtrlSetState   ($setuphandlewarn,    $guishowit)
-		If Not CommonParms ($parmadvanced) Then GUICtrlSetState   ($setupbuttoninstall, $guihideit)
+		If Not CommonParms ($parmadvanced) Then GUICtrlSetState  ($setupbuttoninstall, $guihideit)
 	EndIf
 	WinSetTitle ($setuphandlegui, "", $sctitle)
 EndFunc
 
 Func SetupPrepare ($spdrive)
 	$setupdownload = "no"
+	$setupolddir   = $spdrive & "\grub2.old"
 	If StringInStr (@ScriptDir, "Local\Temp") Then $setupdownload = "yes"
 	$setuplogfile  = $setupmasterpath & $setuplogstring
 	If $setupdownload = "yes" Then $setuplogfile = @ScriptDir & $setuplogstring
@@ -413,9 +414,9 @@ EndFunc
 Func SetupCopyFiles ($scmakeshortcut = "")
 	$cfbootmanexists = "no"
 	SetupProcessCleanup ()
-	If FileExists    ($bootmanpath)    Then $cfbootmanexists = "yes"
-	If FileExists    ($setuptargetdir) Then SetupRenameCurr ()
-	CommonWriteLog ()
+	If FileExists  ($bootmanpath)    Then $cfbootmanexists = "yes"
+	If FileExists  ($setuptargetdir) Then SetupRenameCurr ()
+	CommonWriteLog      ()
 	DirCreate ($setuptargetdir)
 	CommonWriteLog  ("OK - The New Main Directory Was Created At " & $setuptargetdir & ".")
 	If SetupCheckCompress ($setuptargetdir) Then CommonWriteLog ("OK - Compression turned off for setup")
@@ -427,8 +428,8 @@ Func SetupCopyFiles ($scmakeshortcut = "")
 	DirCreate ($userbackgrounds)
 	DirCreate ($userclockfaces)
 	DirCreate ($usermiscfiles)
+	DirCreate ($userthemes)
 	DirCreate ($usericons)
-	DirCreate ($userfonts)
 	CommonSubdirCopy ("winhelp",    $setupmasterpath, $setuptargetdir)
 	CommonSubdirCopy ("winsource",  $setupmasterpath, $setuptargetdir)
 	CommonSubdirCopy ("themes",     $setupmasterpath, $setuptargetdir)
@@ -445,18 +446,22 @@ Func SetupCopyFiles ($scmakeshortcut = "")
 	If FileExists ($setupolddir & "\userfiles") Then DirCopy   ($setupolddir & "\userfiles", $userfiles, 1)
 	CommonCopyUserFiles ()
 	If FileExists ($setupolddir & "\userfiles") Then CommonWriteLog  ("OK - Previous User Files Were Migrated.")
-	If Not FileExists ($setupolddir) Then $themecenterstart = 3.5
-	ThemeStarterSetup   ()
+	If Not FileExists ($setupolddir) Then $wallpapercenterstart = 3.5
+	WallpaperStarterSetup ()
 	FileMove        ($setuptargetdir  & "\winsource\" & $exestring, $masterexe, 1)
 	If FileExists   ($setuptargetdir  & "\setup.bat") Then FileDelete ($setuptargetdir & "\setup.bat")
 	If FileExists   ($setupolddir) Then SetupCopyPrevConfig ()
 	SettingsLoad    ($setuptargetstore)
 	SettingsLoad    ($setupmasterpath & "\winsource\basic.settings.txt", "setup")
-	$scdonatestatus  = SettingsGet  ($setdonatestatus)
-	$scdonatedate    = SettingsGet  ($setdonatedate)
-	$scdonatenew     = $scdonatedate
-	If $scdonatenew = "no" Or (StringLeft ($scdonatenew, 7) <= $todayjul) Then _
-		$scdonatenew = TimeFormatDate ($todayjul + 7, "", "", "juldatetime")
+	$scdonatestatus   = SettingsGet  ($setdonatestatus)
+	$scdonatedate     = SettingsGet  ($setdonatedate)
+	$wallpaperfont        = SettingsGet  ($setwallpaperfont)
+	$wallpaperfontauto    = SettingsGet  ($setwallpaperfontauto)
+	If $wallpaperfont     = $unknown Then $wallpaperfont     = $fontunicode
+	If $wallpaperfontauto = $unknown Then $wallpaperfontauto = "yes"
+	$scdonatenew      = $scdonatedate
+	If $scdonatenew   = "no" Or (StringLeft ($scdonatenew, 7) <= $todayjul) Then _
+		$scdonatenew  = TimeFormatDate ($todayjul + 7, "", "", "juldatetime")
 	If $scdonatestatus = "dontask" or $scdonatestatus = "paypal" Then $scdonatenew = $scdonatedate
 	SettingsPut   ($setlatestsetup,       TimeFormatDate ($todayjul, "", "", "juldatetime"))
 	SettingsPut   ($setwarnedfirmearly,   "")
@@ -465,6 +470,8 @@ Func SetupCopyFiles ($scmakeshortcut = "")
 	SettingsPut   ($setstatusgeo,         "")
 	SettingsPut   ($setdonatedate,        $scdonatenew)
 	SettingsPut   ($setgnugrubversion,    $basgnugrubversion)
+	SettingsPut   ($setwallpaperfont,     $wallpaperfont)
+	SettingsPut   ($setwallpaperfontauto, $wallpaperfontauto)
 	If $firmwaremode = "EFI" Then
 		$scpath  = $bcdorderarray [0] [$bPath]
 		$scdesc  = $bcdorderarray [0] [$bItemTitle]
@@ -595,15 +602,46 @@ Func SetupCopyPrevConfig ()
 	CommonWriteLog  ()
 	CommonWriteLog  ("** " & $stmsg & $basrelcurr & " **")
 	SetupReorgFiles ()
-	DirCopy   ($setupolddir     & "\windata\storage",        $storagepath,           1)
-	DirCopy   ($setupolddir     & "\windata\customconfigs",  $custconfigs,           1)
-	DirCopy   ($setupolddir     & "\windata\updatedata",     $updatedatapath,        1)
-	FileCopy  ($setupolddir     & "\grubenv",                $envfile,               1)
-	FileCopy  ($setupolddir     & "\windata\partlist.txt",   $partlistfile,          1)
-	DirCopy   ($setupolddir     & "\themes\options.local",   $themepath & "\options.local", 1)
+	DirCopy   ($setupolddir     & "\windata\storage",             $storagepath,           1)
+	DirCopy   ($setupolddir     & "\windata\customconfigs",       $custconfigs,           1)
+	DirCopy   ($setupolddir     & "\windata\updatedata",          $updatedatapath,        1)
+	FileCopy  ($setupolddir     & "\grubenv",                     $envfile,               1)
+	FileCopy  ($setupolddir     & "\windata\partlist.txt",        $partlistfile,          1)
+	FileCopy  ($setupolddir     & "\windata" & $extractlogstring, $datapath & $extractlogstring)
+	DirCopy   ($setupolddir     & "\themes\options.local",   $wallpaperpath & "\options.local", 1)
 	If FileExists ($setupolddir & "\themes\common\colorcustom") Then SetupCustColor ()
 	FileCopy  ($setupolddir     & "\grub.cfg", $setuptargetdir & "\grub.cfg", 1)
-	CommonWriteLog  ("OK - Previous Settings And Backups Were Migrated.")
+	If $firmwaremode <> "EFI" Then SetupFindWindows  ()
+	CommonWriteLog    ("OK - Previous Settings And Backups Were Migrated.")
+EndFunc
+
+Func SetupFindWindows ()
+	$cwarrayin  = BaseFuncArrayRead ($setuptargetdir & "\grub.cfg", "SetupFindWindows A")
+	Dim $cwarrayout [0]
+	For $cwsub = 0 To Ubound ($cwarrayin) - 1
+		$cwrec = ($cwarrayin [$cwsub])
+		_ArrayAdd ($cwarrayout, $cwrec)
+		$cwrec = StringStripWS ($cwrec, 7)
+		If StringInStr ($cwrec, "--class windows") Then Return
+		If StringInStr ($cwrec, $automenustart) Then
+			$cwarraytemp = BaseFuncArrayRead ($setupmasterpath & "\winsource" & $templatewinauto, "SetupFindWindows B")
+			_ArrayAdd ($cwarrayout, " ")
+			_ArrayAdd ($cwarrayout, "#")
+			_ArrayAdd ($cwarrayout, "#  Menu Entry 0       Windows Boot Manager")
+			_ArrayAdd ($cwarrayout, "#")
+			_ArrayAdd ($cwarrayout, "menuentry   'Windows Boot Manager' --hotkey=w --class windows --class icon-windows {")
+			_ArrayAdd ($cwarrayout, "     set reviewpause=5")
+			_ArrayConcatenate ($cwarrayout, $cwarraytemp)
+			_ArrayAdd ($cwarrayout, "}")
+			_ArrayAdd ($cwarrayout, " ")
+			_ArrayAdd ($cwarrayout, " ")
+		EndIf
+		If StringLeft  ($cwrec, 1) = "#"           Then ContinueLoop
+		If StringLeft  ($cwrec, 9) <> "menuentry"  Then ContinueLoop
+	Next
+	;_ArrayDisplay ($cwarrayout)
+    BaseFuncArrayWrite ($setuptargetdir & "\grub.cfg", $cwarrayout, $FO_OVERWRITE, "SetupFindWindows A", 0)
+	CommonWriteLog     ("OK - The BIOS Windows Menu Entry Was Added.")
 EndFunc
 
 Func SetupReorgFiles ()
@@ -624,9 +662,9 @@ Func SetupCustColor ()
 	If $cctextloc  > 0 Then $cctext  = StringMid ($ccdata, $cctextloc  + 12, 6)
 	If $ccclockloc > 0 Then $ccclock = StringMid ($ccdata, $ccclockloc + 12, 6)
 	If $cctext <> "" Then _
-		ThemeCopyColor ("coltext",  $cctext,  $themepath & "\common\colorsource", $themepath & "\common\colorcustom")
+		WallpaperCopyColor ("coltext",  $cctext,  $wallpaperpath & "\common\colorsource", $wallpaperpath & "\common\colorcustom")
 	If $ccclock <> "" Then _
-		ThemeCopyColor ("colclock", $ccclock, $themepath & "\common\colorsource", $themepath & "\common\colorcustom")
+		WallpaperCopyColor ("colclock", $ccclock, $wallpaperpath & "\common\colorsource", $wallpaperpath & "\common\colorcustom")
 EndFunc
 
 Func SetupCheckCompress ($ccdir)
@@ -641,9 +679,7 @@ EndFunc
 Func SetupRegistry ($srtargetdir = $masterpath)
 	$srmajversion = StringLeft      ($basrelcurr, 1)
     $srminversion = StringReplace   (StringTrimLeft ($basrelcurr, 2), ".", "")
-    $srestsize    = DirGetSize      ($setupmasterpath)
-	$srestsize    = Int             ($srestsize / $kilo) + $kilo
-	$srcurrsize   = DirGetSize      ($srtargetdir)
+   	$srcurrsize   = DirGetSize      ($srtargetdir)
 	$srcurrsize   = Int             ($srcurrsize / $kilo) + $kilo
 	$srlickey     = RegRead         ($reguninstall, "LicenseKey")
 	If @error Then $srlickey = ""
@@ -658,56 +694,61 @@ Func SetupRegistry ($srtargetdir = $masterpath)
     RegWrite  ($reguninstall, "DisplayVersion",  "REG_SZ",    $basrelcurr)
     RegWrite  ($reguninstall, "DisplayIcon",     "REG_SZ",    $srtargetdir & "\grub2win.exe")
 	RegWrite  ($reguninstall, "LicenseKey",      "REG_SZ",    $srlickey)
-	RegWrite  ($reguninstall, "Auth",            "REG_SZ",    $todayjul)
-    RegWrite  ($reguninstall, "EstimatedSize",   "REG_DWORD", $srestsize)
+	RegWrite  ($reguninstall, "EstimatedSize",   "REG_DWORD", $srcurrsize)
 	RegWrite  ($reguninstall, "Size",            "REG_DWORD", $srcurrsize)
     RegWrite  ($reguninstall, "InstallDate",     "REG_SZ",    @YEAR & @MON & @MDAY)
 EndFunc
 
 Func SetupCheckExe ()
-	$loadtime      = CommonGetInitTime ($starttimetick)
-	$ceprefix      = 'The "setup.exe" module you are running from directory' & @CR & @CR
-	$ceprefix     &= "    " & $setupvaluecleanupdir & @CR & @CR
-	$cemessage     = ""
-	$cedate        = ""
-	If FileExists ($downloadjulian) Then
-		$cedownjul = BaseFuncSingleRead ($downloadjulian)
-		If $nyjulian - $cedownjul > $downloadexpdays Then
-			$cedate    = TimeLine ($cedownjul, "", "", "", "")
-			$cemessage = 'too old.        '    & $cedate
-			$bypassmsg = "BypassOld          "
-		EndIf
-	Else
-		$cemessage     = 'no longer valid.'
-		$bypassmsg     = "BypassInvalid      "
-	EndIf
+	If $setupbypass <> "" Then Return
+	If $nyjulian    < $basreljul + $downloadexpdays Then Return
+	$netshortlimit  = 256
+	$cerelrc        = NetDownInet ($updatechangelog, $downloadurlvisit & "files", "changelog.txt", "Changelog Setup Check")
+	If $cerelrc     <> "OK" Then Return
+	$cecurrjulian   = UpdateParseChangeLog ("Julian")
+	$ceagedays      = $cecurrjulian - $basreljul
+	If $ceagedays   < 30 Then Return
+	$loadtime       = CommonGetInitTime ($starttimetick)
+	$cemessage      = 'The "setup.exe" module you are installing is too old.'  & @CR
+	$cemessage     &= "You should delete it from your system."                 & @CR & @CR
+	$cemessage     &= @ScriptFullPath                                          & @CR & @CR & @CR
+	$cemessage     &= "This module was created " & TimeFormatDays ($ceagedays) & @CR & @CR
+	$cemessage     &= "        " & $basreldate                                 & @CR & @CR & @CR
 	; $cemessage = 'Testing Testing.' & @CR                           ; Use for testing with bat setup & parms
-	If $cemessage      = "" Then Return
-	CommonFlashEnd    ("")
-	$cemessage2        = 'You should delete it from your system.'
-	SetupListModules  ($cedate)
-	$ceprompt   = @CR & @CR & 'Click "OK" to load and continue with the newest setup module.' & @CR & @CR & @CR & _
-							  'Or click "Cancel".'                                            & @CR & @CR       & _
-							  'You will then be directed to the official'                     & @CR &             _
-							  'official SourceForge Grub2Win download site.'                  & @CR & @CR
+	CommonFlashEnd  ("")
+	SetupListModules  ($basreldate)
+	$setuperror =     "* Setup Too Old "
+	CommonStatsBuild  ("SetupTooOld", "")
+	CommonStatsPut    ()
+	$ceprompt   = @CR & 'Click "OK" to download and continue with the newest setup module.' & @CR & @CR & @CR & _
+					    'Or click "Cancel".'                                                & @CR & @CR       & _
+					    'You will then be directed to the official'                         & @CR &             _
+					    'SourceForge Grub2Win download site.'                               & @CR & @CR
 	$ceinfo     = StringReplace ($setupexeinfo, @TAB, " ")
 	If StringStripWS  ($ceinfo, 8) <> "" Then $ceinfo = @CR & @CR & '      setup.exe' & $ceinfo
-	$cerc = MsgBox ($mbwarnokcan, "** Invalid setup.exe **", $ceprefix & "is " & $cemessage & @CR & $cemessage2 & $ceinfo & @CR & $ceprompt)
+	HotKeySet         ("{F2}",  "SetupBypass")
+	$cerc = MsgBox ($mbwarnokcan, "** Invalid setup.exe **", $cemessage & $ceinfo & @CR & $ceprompt)
 	ProcessClose      ("setup.exe")
 	ProcessWaitClose  ("setup.exe", 1)
 	If FileExists     ($setupvaluecleanupdir & "\grub2win.zip")   Then FileDelete ($setupvaluecleanupdir & "\grub2win.zip")
 	If FileExists     ($setupvaluecleanupdir & "\G2WInstall.exe") Then FileDelete ($setupvaluecleanupdir & "\G2WInstall.exe")
 	If $cerc = $IDOK Then
-		NetLog        ($bypassmsg & $cedate, "", $starttimetick, $FO_APPEND)
-		Return
+		$bypassmsg     = "BypassOld          "
+		NetLog         ($bypassmsg & $basreldate, "", $starttimetick, $FO_APPEND)
+		NetFunctionGUI ("DownloadExtractRun", $windowstempgrub & "\Download\grubinst", $downsourcesubproj, _
+					"GrubInst", "Grub2Win Software")
 	EndIf
 	$bypassmsg  =     ""
 	ShellExecute      ($downloadurlvisit)
-	$setuperror =     "* Setup Too Old"
 	NetLog            ("Cancelled " & $cemessage, "", $starttimetick, $FO_APPEND)
-	CommonStatsBuild  ("SetupTooOld", "")
-	CommonStatsPut    ()
 	BaseFuncCleanupTemp ("SetupCheckExe")
+EndFunc
+
+Func SetupBypass ()
+	$setupbypass = "yes"
+	MsgBox ($mbontop, "", "SetupCheckExe Was Bypassed", 1)
+	SetupMain           ()
+	BaseFuncCleanupTemp ("SetupBypass")
 EndFunc
 
 Func SetupListModules ($lmgendate)
@@ -771,5 +812,5 @@ Func SetupError ($semsg, $serc = "")
 	CommonWriteLog ($semsg)
 	MsgBox ($mberrorok, "*** Grub2Win Setup Error ***", $semsg, 120)
 	CommonSetupCloseOut ()
-	BaseFuncCleanupTemp    ("SetupError")
+	BaseFuncCleanupTemp ("SetupError")
 EndFunc

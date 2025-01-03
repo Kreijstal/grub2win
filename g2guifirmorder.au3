@@ -255,8 +255,8 @@ EndFunc
 Func FirmDefaultMsg ($dmdesc, ByRef $dmholdarray, $dmforcemsg = "")
 	If $dmforcemsg = "" And $ordercurrbootpath = $bcdorderarray [0] [$bPath] Then Return 1
 	$dmdesc    = BaseFuncCapit ($dmdesc)
-	$dmdefmsg  = 'When you click "OK" your firmware default will be' & @CR
-	$dmdefmsg &= 'set to run ' & $dmdesc & ' every time you boot your PC' & @CR & @CR
+	$dmdefmsg  = 'When you click "OK" your firmware default will be set to run'  & @CR
+	$dmdefmsg &= 'the ' & $dmdesc & ' boot manager every time you boot your PC.' & @CR & @CR
 	If CommonQuestion ($mbinfookcan, "Set " & $dmdesc & " As Default", $dmdefmsg) Then
 		CommonWriteLog   ()
 		CommonWriteLog   ("    Now Setting " & $dmdesc)

@@ -40,9 +40,7 @@ Func DownloadRunGUI ()
 	$rgrc = NetFunctionGUI   ("DownloadExtract", $windowstempgrub & "\Download\grubinst", $downsourcesubproj, _
 		"GrubInst", "Grub2Win Software", "yes")
 	If $rgrc <> "OK" Then DownloadEndIt ()
-	BaseFuncSingleWrite ($downloadjulian, $basreljul)
 	CommonStatsBuild    ("Download")
-	SecureAuth          ("Set", $todayjul)
 	NetFunctionGUI      ("Run", $windowstempgrub & "\Download\grubinst", $downsourcesubproj, _
 		"GrubInst", "Grub2Win Software", "yes", $rgparms)
 EndFunc
